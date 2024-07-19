@@ -1,0 +1,1 @@
+export { default as DcsCatalogAccordion } from './src/components/DcsCatalogAccordion';
