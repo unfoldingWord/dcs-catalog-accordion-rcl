@@ -502,9 +502,9 @@ export const DcsCatalogAccordion = ({subjects = [], owners = [], languages = [],
   const [accordionMap, setAccordionMap] = useState();
 
   const handleLanguageAccordionChange = async (lc, expanded) => {
-    if (expanded && !owners[lc]) {
+    if (expanded && ! accordionMap?.[lc]) {
       try {
-        const response = await axios.get(`${dcsApiURL}/catalog/list/owners?lang=${encodeURIComponent(lc)}&${buildQueryString(subjects)}&stage=${stage}`);    
+        const response = await axios.get(`${dcsApiURL}/catalog/list/owners?${buildQueryString({subject: subjects, lang: [lc], owner: owners, stage: [stage]})}`);    
         const newOwnersData = {};
         const accordionMapOwnerMap = {}
         response.data.data.forEach(info => {
@@ -529,7 +529,7 @@ export const DcsCatalogAccordion = ({subjects = [], owners = [], languages = [],
     if (expanded && !accordionMap?.[lc]?.[username]) {
       try {
         const response = await axios.get(
-          `${dcsApiURL}/catalog/search?owner=${encodeURIComponent(username)}&lang=${encodeURIComponent(lc)}&${buildQueryString(subjects)}&stage=${stage}`
+          `${dcsApiURL}/catalog/search?${buildQueryString({subject: subjects, lang: [lc], owner: [username], stage: [stage]})}`
         );
         const accordionMapOwnerTopCatalogEntriesMap = {};
         const newTopCatalogEntriesMap = {};
@@ -582,7 +582,7 @@ export const DcsCatalogAccordion = ({subjects = [], owners = [], languages = [],
   useEffect(() => {
     const fetchLanguages = async () => {
       try {
-        const response = await axios.get(`${dcsApiURL}/catalog/list/languages?${buildQueryString({language: languages, owner: owners, subject: subjects})}&stage=${stage}`);
+        const response = await axios.get(`${dcsApiURL}/catalog/list/languages?${buildQueryString({lang: languages, owner: owners, subject: subjects, stage: [stage]})}`);
         const langData = {}
         const accMap = {}
         response.data.data.forEach(info => {

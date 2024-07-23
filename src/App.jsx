@@ -4,7 +4,7 @@ import './App.css'
 function App() {
   return (
     <>
-      <DcsResourceAccordion />
+      <DcsResourceAccordion subjects={['Open Bible Stories']} languages={['fr']} owners={["MVHS"]} />
     </>
   )
 }
