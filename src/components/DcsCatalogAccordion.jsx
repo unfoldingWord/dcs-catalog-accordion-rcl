@@ -1,5 +1,5 @@
 // React imports
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo, useCallback } from 'react';
 
 // Prop Types for type checking in React
 import PropTypes from 'prop-types';
@@ -8,13 +8,7 @@ import PropTypes from 'prop-types';
 import axios from 'axios';
 
 // Material UI components
-import {
-  Accordion,
-  AccordionSummary,
-  AccordionDetails,
-  Tooltip,
-  Typography,
-} from '@mui/material';
+import { Accordion, AccordionSummary, AccordionDetails, Tooltip, Typography } from '@mui/material';
 import CircularProgress from '@mui/joy/CircularProgress';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 
@@ -109,10 +103,10 @@ const buildQueryString = (keyedArrays) => {
     return '';
   }
   const parts = [];
-  Object.keys(keyedArrays).forEach(key => {
+  Object.keys(keyedArrays).forEach((key) => {
     const values = keyedArrays[key];
     if (Array.isArray(values)) {
-      values.forEach(value => {
+      values.forEach((value) => {
         parts.push(`${encodeURIComponent(key)}=${encodeURIComponent(value)}`);
       });
     } else {
@@ -494,101 +488,153 @@ function getSize(file_size) {
   return 'UNKNOWN';
 }
 
-export const DcsCatalogAccordion = ({subjects = [], owners = [], languages = [], stage = "prod", dcsApiURL = "https://git.door43.org/api/v1"}) => {
+const DcsCatalogAccordion = ({ subjects = [], owners = [], languages = [], stage = 'prod', dcsApiURL = 'https://git.door43.org/api/v1' }) => {
+  const hashParts = useMemo(() => window.location.hash?.substring(1)?.split('--') || [], []);
   const [fetchingLanguages, setFetchingLanguages] = useState(false);
   const [languagesData, setLanguagesData] = useState({});
   const [ownersData, setOwnersData] = useState({});
   const [topCatalogEntriesData, setTopCatalogEntriesData] = useState({});
   const [accordionMap, setAccordionMap] = useState();
+  const [accordionIdToShow, setAccordionIdToShow] = useState(window.location.hash?.substring(1));
 
-  const handleLanguageAccordionChange = async (lc, expanded) => {
-    if (expanded && ! accordionMap?.[lc]) {
-      try {
-        const response = await axios.get(`${dcsApiURL}/catalog/list/owners?${buildQueryString({subject: subjects, lang: [lc], owner: owners, stage: [stage]})}`);    
-        const newOwnersData = {};
-        const accordionMapOwnerMap = {}
-        response.data.data.forEach(info => {
-          newOwnersData[info.username] = info;
-          accordionMapOwnerMap[info.username] = null;
-        })
-        setOwnersData(prevState => ({
-          ...prevState,
-          ...newOwnersData,
-        }));
-        setAccordionMap(prevState => ({
-          ...prevState,
-          [lc]: accordionMapOwnerMap,
-        }))
-      } catch (error) {
-        console.error('Failed to fetch owners', error);
-      }
-    }
-  };
-
-  const handleOwnerAccordionChange = async (lc, username, expanded) => {
-    if (expanded && !accordionMap?.[lc]?.[username]) {
-      try {
-        const response = await axios.get(
-          `${dcsApiURL}/catalog/search?${buildQueryString({subject: subjects, lang: [lc], owner: [username], stage: [stage]})}`
-        );
-        const accordionMapOwnerTopCatalogEntriesMap = {};
-        const newTopCatalogEntriesMap = {};
-        response.data.data.forEach(info => {
-          newTopCatalogEntriesMap[info.id] = info;
-          accordionMapOwnerTopCatalogEntriesMap[info.id] = null;
-        });
-        setTopCatalogEntriesData(prevState => ({
-          ...prevState,
-          ...newTopCatalogEntriesMap,
-        }))
-        setAccordionMap(prevState => ({
-          ...prevState,
-          [lc]: {
-            ...prevState[lc],
-            [username]: accordionMapOwnerTopCatalogEntriesMap,
-          },
-        }));
-      } catch (error) {
-        console.error('Failed to fetch entries', error);
-      }
-    }
-  };
-
-  const handleTopCatalogEntriesAccordionChange = async (topCatalogEntry, expanded) => {
-    if (expanded && !accordionMap?.[topCatalogEntry.language]?.[topCatalogEntry.owner]?.[topCatalogEntry.id]) {
-      try {
-        const response = await axios.get(
-          `${dcsApiURL}/catalog/search?owner=${encodeURIComponent(topCatalogEntry.owner)}&repo=${encodeURIComponent(topCatalogEntry.name)}&includeHistory=1&sort=released&order=desc&stage=${stage}`
-        );
-        for (let i = 0; i < response.data.data.length; i++) {
-          response.data.data[i].downloadableTypes = await getDownloadableTypes([response.data.data[i]]);
+  const handleLanguageAccordionChange = useCallback(
+    (lc, expanded) => {
+      console.log('HANDLE LANG', lc, expanded);
+      const fetchOwners = async () => {
+        if (expanded && !accordionMap?.[lc]) {
+          try {
+            const response = await axios.get(`${dcsApiURL}/catalog/list/owners?${buildQueryString({ subject: subjects, lang: [lc], owner: owners, stage: [stage] })}`);
+            const newOwnersData = {};
+            const accordionMapOwnerMap = {};
+            response.data.data.forEach((info) => {
+              newOwnersData[info.username] = info;
+              accordionMapOwnerMap[info.username] = null;
+            });
+            setOwnersData((prevState) => ({
+              ...prevState,
+              ...newOwnersData,
+            }));
+            setAccordionMap((prevState) => ({
+              ...prevState,
+              [lc]: accordionMapOwnerMap,
+            }));
+          } catch (error) {
+            console.error('Failed to fetch owners', error);
+          }
         }
-        setAccordionMap(prevState => ({
-          ...prevState,
-          [topCatalogEntry.language]: {
-            ...prevState[topCatalogEntry.language],
-            [topCatalogEntry.owner]: {
-              ...prevState[topCatalogEntry.language][topCatalogEntry.owner],
-              [topCatalogEntry.id]: response.data.data,
-            }
-          },
-        }));
-      } catch (error) {
-        console.error('Failed to fetch entries', error);
+      };
+
+      if (expanded) {
+        if (!accordionIdToShow) {
+          window.history.pushState(null, null, `#${lc}`);
+        }
+        fetchOwners();
       }
+    },
+    [accordionMap, accordionIdToShow, dcsApiURL, subjects, owners, stage]
+  );
+
+  const handleOwnerAccordionChange = useCallback(
+    (lc, username, expanded) => {
+      console.log('HANDLE OWNER', lc, username, expanded);
+      const fetchTopCatalogEntries = async () => {
+        if (expanded && !accordionMap?.[lc]?.[username]) {
+          try {
+            const response = await axios.get(`${dcsApiURL}/catalog/search?${buildQueryString({ subject: subjects, lang: [lc], owner: [username], stage: [stage] })}`);
+            const accordionMapOwnerTopCatalogEntriesMap = {};
+            const newTopCatalogEntriesMap = {};
+            response.data.data.forEach((info) => {
+              newTopCatalogEntriesMap[info.full_name] = info;
+              accordionMapOwnerTopCatalogEntriesMap[info.name] = null;
+            });
+            setTopCatalogEntriesData((prevState) => ({
+              ...prevState,
+              ...newTopCatalogEntriesMap,
+            }));
+            setAccordionMap((prevState) => ({
+              ...prevState,
+              [lc]: {
+                ...prevState[lc],
+                [username]: accordionMapOwnerTopCatalogEntriesMap,
+              },
+            }));
+          } catch (error) {
+            console.error('Failed to fetch entries', error);
+          }
+        }
+      };
+
+      if (expanded) {
+        if (!accordionIdToShow) {
+          window.history.pushState(null, null, `#${lc}--${username}`);
+        }
+        fetchTopCatalogEntries();
+      }
+    },
+    [accordionMap, accordionIdToShow, dcsApiURL, subjects, stage]
+  );
+
+  const handleTopCatalogEntriesAccordionChange = useCallback(
+    (topCatalogEntry, expanded) => {
+      console.log('HANDLE TOP', topCatalogEntry, expanded);
+      const fetchCatalogEntriesWithDownloadables = async () => {
+        if (expanded && !accordionMap?.[topCatalogEntry.language]?.[topCatalogEntry.owner]?.[topCatalogEntry.full_name]) {
+          try {
+            const response = await axios.get(
+              `${dcsApiURL}/catalog/search?owner=${encodeURIComponent(topCatalogEntry.owner)}&repo=${encodeURIComponent(
+                topCatalogEntry.name
+              )}&includeHistory=1&sort=released&order=desc&stage=${stage}`
+            );
+            const otherVersionsWithAssets = [];
+            for (let i = 0; i < response.data.data.length; i++) {
+              if (response.data.data[i].release?.assets?.length > 0) {
+                response.data.data[i].downloadableTypes = await getDownloadableTypes([response.data.data[i]]);
+                otherVersionsWithAssets.push(response.data.data[i]);
+              }
+            }
+            setAccordionMap((prevState) => ({
+              ...prevState,
+              [topCatalogEntry.language]: {
+                ...prevState[topCatalogEntry.language],
+                [topCatalogEntry.owner]: {
+                  ...prevState[topCatalogEntry.language][topCatalogEntry.owner],
+                  [topCatalogEntry.name]: otherVersionsWithAssets,
+                },
+              },
+            }));
+          } catch (error) {
+            console.error('Failed to fetch entries', error);
+          }
+        }
+      };
+
+      if (expanded) {
+        if (!accordionIdToShow) {
+          window.history.pushState(null, null, `#${topCatalogEntry.language}--${topCatalogEntry.owner}--${topCatalogEntry.name}`);
+        }
+        fetchCatalogEntriesWithDownloadables();
+      }
+    },
+    [accordionMap, accordionIdToShow, dcsApiURL, stage]
+  );
+
+  const handleDownloadableEntryChange = (entry, expanded) => {
+    console.log('HANDLE VER', entry, expanded);
+    if (expanded) {
+      window.history.pushState(null, null, `#${entry.language}--${entry.owner}--${entry.name}--${entry.branch_or_tag_name}`);
     }
   };
 
   useEffect(() => {
     const fetchLanguages = async () => {
       try {
-        const response = await axios.get(`${dcsApiURL}/catalog/list/languages?${buildQueryString({lang: languages, owner: owners, subject: subjects, stage: [stage]})}`);
-        const langData = {}
-        const accMap = {}
-        response.data.data.forEach(info => {
+        const response = await axios.get(`${dcsApiURL}/catalog/list/languages?${buildQueryString({ lang: languages, owner: owners, subject: subjects, stage: [stage] })}`);
+        const langData = {};
+        const accMap = {};
+        response.data.data.forEach((info) => {
           langData[info.lc] = info;
           accMap[info.lc] = null;
-        })
+        });
         setLanguagesData(langData);
         setAccordionMap(accMap);
       } catch (error) {
@@ -598,108 +644,203 @@ export const DcsCatalogAccordion = ({subjects = [], owners = [], languages = [],
       setFetchingLanguages(false);
     };
 
-    if (dcsApiURL && ! fetchingLanguages && ! accordionMap) {
+    if (dcsApiURL && !fetchingLanguages && !accordionMap) {
       console.log(dcsApiURL, fetchingLanguages);
       setFetchingLanguages(true);
       fetchLanguages();
     }
   }, [dcsApiURL, subjects, languages, owners, stage, accordionMap, fetchingLanguages]);
 
+  useEffect(() => {
+    console.log(accordionIdToShow, accordionMap);
+    if (accordionIdToShow && accordionMap) {
+      const [lang, username, reponame, version] = accordionIdToShow.split('--');
+      console.log(lang, username, reponame);
+      if (lang in accordionMap && !accordionMap[lang]) {
+        console.log('here1');
+        const langAccordion = document.getElementById(lang);
+        if (langAccordion) {
+          langAccordion.scrollIntoView();
+        }
+        handleLanguageAccordionChange(lang, true);
+        if (!username) {
+          setAccordionIdToShow('');
+        }
+      } else if (username in (accordionMap?.[lang] || []) && !accordionMap[lang][username]) {
+        console.log('here2');
+        const ownerAccordion = document.getElementById(`${lang}--${username}`);
+        if (ownerAccordion) {
+          ownerAccordion.scrollIntoView();
+        }
+        handleOwnerAccordionChange(lang, username, true);
+        if (!reponame) {
+          setAccordionIdToShow('');
+        }
+      } else if (reponame in (accordionMap?.[lang]?.[username] || []) && !accordionMap[lang][username][reponame]) {
+        console.log('here3');
+        const repoAccordion = document.getElementById(`${lang}--${username}--${reponame}`);
+        if (repoAccordion) {
+          repoAccordion.scrollIntoView();
+        }
+        handleTopCatalogEntriesAccordionChange(topCatalogEntriesData[`${username}/${reponame}`], true);
+        if (version) {
+          const versionAccordion = document.getElementById(`${lang}--${username}--${reponame}--${version}`);
+          if (versionAccordion) {
+            versionAccordion.scrollIntoView();
+          }
+        }
+        setAccordionIdToShow('');
+      } else {
+        console.log('here4');
+        setAccordionIdToShow(null);
+      }
+    }
+  }, [accordionIdToShow, accordionMap, topCatalogEntriesData, handleLanguageAccordionChange, handleOwnerAccordionChange, handleTopCatalogEntriesAccordionChange]);
+
   return (
-    <>
-      <div>
-      {Object.keys(accordionMap || {})?.map(lc => (
-        <Accordion key={lc} onChange={(event, expanded) => handleLanguageAccordionChange(lc, expanded)}>
-          <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-            <Tooltip title={lc} arrow>
-              <Typography>
-                {lc} {languagesData?.[lc] && <>/ <span style={{ direction: languagesData[lc].ld || "ltr" }}>{languagesData[lc].ln}</span> / {languagesData[lc].ang}</>}
-              </Typography>
-            </Tooltip>
-          </AccordionSummary>
-          <AccordionDetails>
-            {Object.keys(accordionMap[lc] || {})?.map(username => (
-              <Accordion key={username} onChange={(event, expanded) => handleOwnerAccordionChange(lc, username, expanded)}>
-                <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                  <Tooltip title={username} arrow>
-                    <Typography>{ownersData[username] && ownersData[username].full_name ? `${ownersData[username].full_name} (${username})` : username}</Typography>
-                  </Tooltip>
-                </AccordionSummary>
-                <AccordionDetails>
-                  {Object.keys(accordionMap[lc][username] || {})?.map(id => (
-                    <Accordion key={id} onChange={(event, expanded) => handleTopCatalogEntriesAccordionChange(topCatalogEntriesData[id], expanded)}>
-                      <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                        <Tooltip title={topCatalogEntriesData[id].subject} arrow>
-                          <Typography>{topCatalogEntriesData[id].title}</Typography>
-                        </Tooltip>
-                      </AccordionSummary>
-                      <AccordionDetails>
-                        {accordionMap[lc][username][id]?.map(entry => (
-                          <Accordion key={entry.branch_or_tag_name}>
-                            <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                              <Tooltip title={entry.release?.name} arrow>
-                                <Typography>{entry.branch_or_tag_name}</Typography>
-                              </Tooltip>
-                            </AccordionSummary>
-                            <AccordionDetails>
-                              <div key="preview" style={{ paddingLeft: '10px' }}>
-                                <div>Preview</div>
-                                <ul>
-                                  <li key="pdf">
-                                    <a
-                                      href={`https://preview.door43.org/u/${entry.full_name}/${entry.branch_or_tag_name}`}
-                                      style={{ textDecoration: 'none' }}
-                                      target="_blank"
-                                      rel="noreferrer noopener"
-                                    >Preview / PDF</a>
-                                  </li>
-                                </ul>
-                              </div>
-                              {allowedDownloadableTypes.map((type) => {
-                                console.log(entry.downloadableTypes);
-                                if (!(type in entry.downloadableTypes) || !entry.downloadableTypes[type].length) {
-                                  return null;
-                                }
-                                return (
-                                  <div key={type} style={{ paddingLeft: '10px' }}>
-                                    <div>{type.charAt(0).toUpperCase() + type.slice(1)}</div>
-                                    <ul>
-                                      {entry.downloadableTypes[type].map((format) => {
-                                        const description = getDescription(format, dcsApiURL);
-                                        const cleanHTML = DOMPurify.sanitize(description, {
-                                          ALLOWED_TAGS: ['a', 'b', 'i', 'em', 'strong'],
-                                          ALLOWED_ATTR: ['href', 'title', 'style', 'target'],
-                                        });
-                                        return (
-                                          <li key={format.name}>
-                                            <a
-                                              href={format.asset.browser_download_url}
-                                              style={{ textDecoration: 'none' }}
-                                              target="_blank"
-                                              dangerouslySetInnerHTML={{ __html: cleanHTML }}
-                                              rel="noreferrer noopener"
-                                            ></a>
-                                          </li>
-                                        );
-                                      })}
-                                    </ul>
+    <div>
+      {Object.keys(accordionMap || {}).length ? (
+        Object.keys(accordionMap)?.map((lc) => (
+          <Accordion id={lc} key={lc} onChange={(event, expanded) => handleLanguageAccordionChange(lc, expanded)} defaultExpanded={lc === hashParts[0]}>
+            <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+              <Tooltip title={lc} arrow>
+                <Typography style={{ fontWeight: 'bold' }}>
+                  {lc}{' '}
+                  {languagesData?.[lc] && (
+                    <>
+                      / <span style={{ direction: languagesData[lc].ld || 'ltr' }}>{languagesData[lc].ln}</span> / {languagesData[lc].ang}
+                    </>
+                  )}
+                </Typography>
+              </Tooltip>
+            </AccordionSummary>
+            <AccordionDetails>
+              {Object.keys(accordionMap[lc] || {}).length ? (
+                Object.keys(accordionMap[lc] || {})?.map((username) => (
+                  <Accordion
+                    id={`${lc}--${username}`}
+                    key={username}
+                    onChange={(event, expanded) => handleOwnerAccordionChange(lc, username, expanded)}
+                    defaultExpanded={lc == hashParts[0] && username === hashParts[1]}
+                  >
+                    <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                      <Tooltip title={username} arrow>
+                        <Typography style={{ fontWeight: 'bold' }}>
+                          {ownersData[username] && ownersData[username].full_name ? `${ownersData[username].full_name} (${username})` : username}
+                        </Typography>
+                      </Tooltip>
+                    </AccordionSummary>
+                    <AccordionDetails>
+                      {Object.keys(accordionMap[lc][username] || {}).length ? (
+                        Object.keys(accordionMap[lc][username] || {})?.map((reponame) => {
+                          const id = `${username}/${reponame}`;
+                          const topEntry = topCatalogEntriesData[id];
+                          console.log(topCatalogEntriesData, id, topCatalogEntriesData[id]);
+                          return (
+                            <Accordion
+                              id={`${lc}--${username}--${reponame}`}
+                              key={id}
+                              onChange={(event, expanded) => handleTopCatalogEntriesAccordionChange(topEntry, expanded)}
+                              defaultExpanded={lc == hashParts[0] && username === hashParts[1] && topEntry.name == hashParts[2]}
+                            >
+                              <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                                <Tooltip title={topEntry.subject} arrow>
+                                  <Typography style={{ fontWeight: 'bold' }}>
+                                    {topEntry.title} {topEntry.branch_or_tag_name}
+                                  </Typography>
+                                </Tooltip>
+                              </AccordionSummary>
+                              <AccordionDetails>
+                                <h3 style={{ paddingLeft: '10px', margin: 0 }}>
+                                  <a
+                                    href={`https://preview.door43.org/u/${topCatalogEntriesData[id].full_name}/${topCatalogEntriesData[id].branch_or_tag_name}`}
+                                    style={{ textDecoration: 'none' }}
+                                    target="_blank"
+                                    rel="noreferrer noopener"
+                                  >
+                                    Preview / PDF
+                                  </a>
+                                </h3>
+                                {accordionMap[lc][username][reponame]?.length ? (
+                                  <div style={{ paddingLeft: '10px' }}>
+                                    <h4>Downloadables:</h4>
+                                    {accordionMap[lc][username][reponame]?.map((entry) => (
+                                      <Accordion
+                                        id={`${lc}--${username}--${reponame}--${entry.branch_or_tag_name}`}
+                                        key={entry.branch_or_tag_name}
+                                        onChange={(event, expanded) => handleDownloadableEntryChange(entry, expanded)}
+                                        defaultExpanded={
+                                          lc == hashParts[0] && username === hashParts[1] && topEntry.name == hashParts[2] && entry.branch_or_tag_name == hashParts[3]
+                                        }
+                                      >
+                                        <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                                          <Tooltip title={entry.release?.name} arrow>
+                                            <Typography>{entry.branch_or_tag_name}</Typography>
+                                          </Tooltip>
+                                        </AccordionSummary>
+                                        <AccordionDetails>
+                                          {allowedDownloadableTypes.map((type) => {
+                                            console.log(entry.downloadableTypes);
+                                            if (!(type in entry.downloadableTypes) || !entry.downloadableTypes[type].length) {
+                                              return null;
+                                            }
+                                            return (
+                                              <div key={type} style={{ paddingLeft: '10px' }}>
+                                                <div>{type.charAt(0).toUpperCase() + type.slice(1)}</div>
+                                                <ul>
+                                                  {entry.downloadableTypes[type].map((format) => {
+                                                    const description = getDescription(format, dcsApiURL);
+                                                    const cleanHTML = DOMPurify.sanitize(description, {
+                                                      ALLOWED_TAGS: ['a', 'b', 'i', 'em', 'strong'],
+                                                      ALLOWED_ATTR: ['href', 'title', 'style', 'target'],
+                                                    });
+                                                    return (
+                                                      <li key={format.name}>
+                                                        <a
+                                                          href={format.asset.browser_download_url}
+                                                          style={{ textDecoration: 'none' }}
+                                                          target="_blank"
+                                                          dangerouslySetInnerHTML={{ __html: cleanHTML }}
+                                                          rel="noreferrer noopener"
+                                                        ></a>
+                                                      </li>
+                                                    );
+                                                  })}
+                                                </ul>
+                                              </div>
+                                            );
+                                          })}
+                                        </AccordionDetails>
+                                      </Accordion>
+                                    ))}
                                   </div>
-                                );
-                              }) || <CircularProgress />}
-                            </AccordionDetails>
-                          </Accordion>
-                        )) || <CircularProgress />}
-                      </AccordionDetails>
-                    </Accordion>
-                  )) || <CircularProgress />}
-                </AccordionDetails>
-              </Accordion>
-            )) || <CircularProgress />}
-          </AccordionDetails>
-        </Accordion>
-      )) || <CircularProgress />}
-      </div>
-    </>
+                                ) : null}
+                              </AccordionDetails>
+                            </Accordion>
+                          );
+                        })
+                      ) : (
+                        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
+                          <CircularProgress />
+                        </div>
+                      )}
+                    </AccordionDetails>
+                  </Accordion>
+                ))
+              ) : (
+                <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
+                  <CircularProgress />
+                </div>
+              )}
+            </AccordionDetails>
+          </Accordion>
+        ))
+      ) : (
+        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
+          <CircularProgress />
+        </div>
+      )}
+    </div>
   );
 };
 

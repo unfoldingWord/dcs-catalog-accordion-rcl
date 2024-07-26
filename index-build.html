@@ -1,0 +1,33 @@
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DCS Catalog Accordion</title>
+</head>
+<body>
+  <div id="root"></div>
+  <!-- Include React and ReactDOM (development versions) -->
+  <script src="https://unpkg.com/react/umd/react.development.js"></script>
+  <script src="https://unpkg.com/react-dom/umd/react-dom.development.js"></script>
+  <!-- Include your UMD bundle -->
+  <script src="./dcs-catalog-accordion.umd.js"></script>
+  <script>
+    // Wait for the DOM to be fully loaded
+    document.addEventListener('DOMContentLoaded', function() {
+      // Ensure React and ReactDOM are available
+      if (window.React && window.ReactDOM && window.DcsCatalogAccordion) {
+        const { createElement } = window.React;
+        const { createRoot } = window.ReactDOM;
+        const DcsCatalogAccordion = window.DcsCatalogAccordion;
+
+        // Create a root and render the DcsCatalogAccordion component with the specified props
+        const root = createRoot(document.getElementById('root'));
+        console.log(DcsCatalogAccordion);
+        root.render(
+          createElement(DcsCatalogAccordion, { subject: ['Open Bible Stories'] })
+        );
+      } else {
+        console.error('React, ReactDOM, or DcsCatalogAccordion is not available.');
+      }
+    });
+  </script>
+</body>
+</html>
