@@ -1,0 +1,26 @@
+#mapwrapper {
+  text-align: center;
+}
+
+svg#world-map {
+  stroke: black;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 0.2;
+}
+
+svg#world-map path, svg#world-map text {
+  cursor: pointer;
+  transition: fill 0.3s;
+}
+
+#show-all-button {
+  background-color: green;
+  color: white;
+  padding: 10px;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  cursor: pointer;
+  text-align: center;
+  margin: 0 auto;
+}

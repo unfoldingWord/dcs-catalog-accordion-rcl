@@ -23,12 +23,12 @@
         map.render(
           createElement(WorldLanguageMap, { onContinentClick: function (languages) {
             accordion.render(
-              createElement(DcsCatalogAccordion, { subjects: [], languages })
+              createElement(DcsCatalogAccordion, { subjects: ['Open Bible Stories'], languages })
             );
           }})
         );
         accordion.render(
-          createElement(DcsCatalogAccordion, { subjects: [], languages: [] })
+          createElement(DcsCatalogAccordion, { subjects: ['Open Bible Stories'], languages: [] })
         );
       } else {
         console.error('React, ReactDOM, or DcsCatalogAccordion is not available.');

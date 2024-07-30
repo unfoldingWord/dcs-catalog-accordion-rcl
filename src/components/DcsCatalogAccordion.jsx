@@ -105,12 +105,14 @@ const buildQueryString = (keyedArrays) => {
   const parts = [];
   Object.keys(keyedArrays).forEach((key) => {
     const values = keyedArrays[key];
-    if (Array.isArray(values)) {
-      values.forEach((value) => {
-        parts.push(`${encodeURIComponent(key)}=${encodeURIComponent(value)}`);
-      });
-    } else {
-      parts.push(`${encodeURIComponent(key)}=${encodeURIComponent(values)}`);
+    if (values) {
+      if (Array.isArray(values)) {
+        if(values.length) {
+          parts.push(`${encodeURIComponent(key)}=${encodeURIComponent(values.join(','))}`);
+        }
+      } else {
+        parts.push(`${encodeURIComponent(key)}=${encodeURIComponent(values)}`);
+      }
     }
   });
   return parts.join('&');
@@ -323,7 +325,7 @@ async function getDownloadableTypes(entries) {
   return downloadable_types;
 }
 
-function getDescription(fmt, dcs_domain = 'git.door43.org') {
+function getDescription(fmt, dcs_domain = DEFAULT_DCS_URL) {
   let title = fmt.asset.name;
 
   if (!fmt.format) {
@@ -488,9 +490,11 @@ function getSize(file_size) {
   return 'UNKNOWN';
 }
 
-const DcsCatalogAccordion = ({ subjects = [], owners = [], languages = [], stage = 'prod', dcsApiURL = 'https://git.door43.org/api/v1' }) => {
-  const hashParts = useMemo(() => window.location.hash?.substring(1)?.split('--') || [], []);
-  const [fetchingLanguages, setFetchingLanguages] = useState(false);
+const DEFAULT_DCS_URL = 'https://git.door43.org';
+const API_PATH = 'api/v1';
+const DEFAULT_STAGE = 'prod';
+
+const DcsCatalogAccordion = ({ subjects, owners, languages, stage, dcsURL = DEFAULT_DCS_URL }) => {
   const [languagesData, setLanguagesData] = useState({});
   const [ownersData, setOwnersData] = useState({});
   const [topCatalogEntriesData, setTopCatalogEntriesData] = useState({});
@@ -499,11 +503,12 @@ const DcsCatalogAccordion = ({ subjects = [], owners = [], languages = [], stage
 
   const handleLanguageAccordionChange = useCallback(
     (lc, expanded) => {
-      console.log('HANDLE LANG', lc, expanded);
       const fetchOwners = async () => {
         if (expanded && !accordionMap?.[lc]) {
           try {
-            const response = await axios.get(`${dcsApiURL}/catalog/list/owners?${buildQueryString({ subject: subjects, lang: [lc], owner: owners, stage: [stage] })}`);
+            const response = await axios.get(
+              `${dcsURL}/${API_PATH}/catalog/list/owners?${buildQueryString({ subject: subjects, lang: [lc], owner: owners, stage: [stage || DEFAULT_STAGE] })}`
+            );
             const newOwnersData = {};
             const accordionMapOwnerMap = {};
             response.data.data.forEach((info) => {
@@ -531,16 +536,15 @@ const DcsCatalogAccordion = ({ subjects = [], owners = [], languages = [], stage
         fetchOwners();
       }
     },
-    [accordionMap, accordionIdToShow, dcsApiURL, subjects, owners, stage]
+    [accordionMap, accordionIdToShow, dcsURL, subjects, owners, stage]
   );
 
   const handleOwnerAccordionChange = useCallback(
     (lc, username, expanded) => {
-      console.log('HANDLE OWNER', lc, username, expanded);
       const fetchTopCatalogEntries = async () => {
         if (expanded && !accordionMap?.[lc]?.[username]) {
           try {
-            const response = await axios.get(`${dcsApiURL}/catalog/search?${buildQueryString({ subject: subjects, lang: [lc], owner: [username], stage: [stage] })}`);
+            const response = await axios.get(`${dcsURL}/${API_PATH}/catalog/search?${buildQueryString({ subject: subjects, lang: [lc], owner: [username], stage: stage })}`);
             const accordionMapOwnerTopCatalogEntriesMap = {};
             const newTopCatalogEntriesMap = {};
             response.data.data.forEach((info) => {
@@ -571,19 +575,18 @@ const DcsCatalogAccordion = ({ subjects = [], owners = [], languages = [], stage
         fetchTopCatalogEntries();
       }
     },
-    [accordionMap, accordionIdToShow, dcsApiURL, subjects, stage]
+    [accordionMap, accordionIdToShow, dcsURL, subjects, stage]
   );
 
   const handleTopCatalogEntriesAccordionChange = useCallback(
     (topCatalogEntry, expanded) => {
-      console.log('HANDLE TOP', topCatalogEntry, expanded);
       const fetchCatalogEntriesWithDownloadables = async () => {
         if (expanded && !accordionMap?.[topCatalogEntry.language]?.[topCatalogEntry.owner]?.[topCatalogEntry.full_name]) {
           try {
             const response = await axios.get(
-              `${dcsApiURL}/catalog/search?owner=${encodeURIComponent(topCatalogEntry.owner)}&repo=${encodeURIComponent(
+              `${dcsURL}/${API_PATH}/catalog/search?owner=${encodeURIComponent(topCatalogEntry.owner)}&repo=${encodeURIComponent(
                 topCatalogEntry.name
-              )}&includeHistory=1&sort=released&order=desc&stage=${stage}`
+              )}&includeHistory=1&sort=released&order=desc&stage=${stage || 'prod'}`
             );
             const otherVersionsWithAssets = [];
             for (let i = 0; i < response.data.data.length; i++) {
@@ -615,11 +618,10 @@ const DcsCatalogAccordion = ({ subjects = [], owners = [], languages = [], stage
         fetchCatalogEntriesWithDownloadables();
       }
     },
-    [accordionMap, accordionIdToShow, dcsApiURL, stage]
+    [accordionMap, accordionIdToShow, dcsURL, stage]
   );
 
   const handleDownloadableEntryChange = (entry, expanded) => {
-    console.log('HANDLE VER', entry, expanded);
     if (expanded) {
       window.history.pushState(null, null, `#${entry.language}--${entry.owner}--${entry.name}--${entry.branch_or_tag_name}`);
     }
@@ -628,12 +630,14 @@ const DcsCatalogAccordion = ({ subjects = [], owners = [], languages = [], stage
   useEffect(() => {
     const fetchLanguages = async () => {
       try {
-        const response = await axios.get(`${dcsApiURL}/catalog/list/languages?${buildQueryString({ lang: languages, owner: owners, subject: subjects, stage: [stage] })}`);
+        const response = await axios.get(`${dcsURL}/${API_PATH}/catalog/list/languages?${buildQueryString({ owner: owners, subject: subjects, stage: [stage || DEFAULT_STAGE] })}`);
         const langData = {};
         const accMap = {};
         response.data.data.forEach((info) => {
-          langData[info.lc] = info;
-          accMap[info.lc] = null;
+          if (!languages?.length || languages?.includes(info.lc)) {
+            langData[info.lc] = info;
+            accMap[info.lc] = null;
+          }
         });
         setLanguagesData(langData);
         setAccordionMap(accMap);
@@ -641,67 +645,94 @@ const DcsCatalogAccordion = ({ subjects = [], owners = [], languages = [], stage
         console.log('Error fetching languages', error);
         setAccordionMap({});
       }
-      setFetchingLanguages(false);
     };
 
-    if (dcsApiURL && !fetchingLanguages && !accordionMap) {
-      console.log(dcsApiURL, fetchingLanguages);
-      setFetchingLanguages(true);
-      fetchLanguages();
-    }
-  }, [dcsApiURL, subjects, languages, owners, stage, accordionMap, fetchingLanguages]);
+    const collapseAllAccordions = () => {
+      console.log("COLLABSING")
+      const accordions = document.querySelectorAll('.MuiAccordion-root');
+      accordions.forEach((accordion) => {
+        if (accordion.classList.contains('Mui-expanded')) {
+          accordion.firstElementChild.click();
+        }
+      });
+    };
+
+    collapseAllAccordions();
+    fetchLanguages();
+  }, [dcsURL, languages, subjects, owners, stage]);
 
   useEffect(() => {
-    console.log(accordionIdToShow, accordionMap);
-    if (accordionIdToShow && accordionMap) {
+    const handleAccordionIdToShow = async () => {
+      console.log("IN SHOW", accordionIdToShow);
       const [lang, username, reponame, version] = accordionIdToShow.split('--');
-      console.log(lang, username, reponame);
-      if (lang in accordionMap && !accordionMap[lang]) {
-        console.log('here1');
-        const langAccordion = document.getElementById(lang);
-        if (langAccordion) {
+
+      let langAccordion = lang && document.getElementById(lang);
+      let ownerAccordion = username && document.getElementById(`${lang}--${username}`);
+      let repoAccordion = reponame && document.getElementById(`${lang}--${username}--${reponame}`);
+      let versionAccordion = version && document.getElementById(`${lang}--${username}--${reponame}--${version}`);
+
+      const finish = () => {
+        if (versionAccordion) {
+          versionAccordion.scrollIntoView();
+        } else if (repoAccordion) {
+          repoAccordion.scrollIntoView();
+        } else if (ownerAccordion) {
+          ownerAccordion.scrollIntoView();
+        } else if (langAccordion) {
           langAccordion.scrollIntoView();
         }
-        handleLanguageAccordionChange(lang, true);
-        if (!username) {
-          setAccordionIdToShow('');
+        setAccordionIdToShow('');
+      }
+
+      if (lang in accordionMap && !accordionMap[lang]) {
+        langAccordion?.firstElementChild?.click();
+        if (!username || !langAccordion) {
+          finish();
         }
       } else if (username in (accordionMap?.[lang] || []) && !accordionMap[lang][username]) {
-        console.log('here2');
-        const ownerAccordion = document.getElementById(`${lang}--${username}`);
-        if (ownerAccordion) {
-          ownerAccordion.scrollIntoView();
-        }
-        handleOwnerAccordionChange(lang, username, true);
-        if (!reponame) {
-          setAccordionIdToShow('');
+        ownerAccordion?.firstElementChild?.click();
+        if (!ownerAccordion || !reponame) {
+          finish();
         }
       } else if (reponame in (accordionMap?.[lang]?.[username] || []) && !accordionMap[lang][username][reponame]) {
-        console.log('here3');
         const repoAccordion = document.getElementById(`${lang}--${username}--${reponame}`);
         if (repoAccordion) {
-          repoAccordion.scrollIntoView();
+          repoAccordion.firstElementChild?.click();
         }
-        handleTopCatalogEntriesAccordionChange(topCatalogEntriesData[`${username}/${reponame}`], true);
         if (version) {
-          const versionAccordion = document.getElementById(`${lang}--${username}--${reponame}--${version}`);
-          if (versionAccordion) {
-            versionAccordion.scrollIntoView();
-          }
+          const timeout = 5000; // 5 seconds
+          const interval = 500; // 500 ms
+          let elapsedTime = 0;
+          const checkVersionAccordion = setInterval(() => {
+            const versionAccordion = document.getElementById(`${lang}--${username}--${reponame}--${version}`);
+            if (versionAccordion) {
+              versionAccordion.firstElementChild?.click();
+              clearInterval(checkVersionAccordion);
+            } else {
+              elapsedTime += interval;
+              if (elapsedTime >= timeout) {
+                clearInterval(checkVersionAccordion);
+                console.log('Version accordion not found');
+              }
+            }
+          }, interval);
         }
-        setAccordionIdToShow('');
+        finish();
       } else {
-        console.log('here4');
-        setAccordionIdToShow(null);
+        finish();
       }
+    };
+
+    if (accordionIdToShow && accordionMap) {
+      handleAccordionIdToShow();
     }
-  }, [accordionIdToShow, accordionMap, topCatalogEntriesData, handleLanguageAccordionChange, handleOwnerAccordionChange, handleTopCatalogEntriesAccordionChange]);
+  }, [accordionIdToShow, accordionMap, topCatalogEntriesData]);
 
   return (
     <div>
       {Object.keys(accordionMap || {}).length ? (
         Object.keys(accordionMap)?.map((lc) => (
-          <Accordion id={lc} key={lc} onChange={(event, expanded) => handleLanguageAccordionChange(lc, expanded)} defaultExpanded={lc === hashParts[0]}>
+          <Accordion id={lc} key={lc} onChange={(event, expanded) => handleLanguageAccordionChange(lc, expanded)}>
             <AccordionSummary expandIcon={<ExpandMoreIcon />}>
               <Tooltip title={lc} arrow>
                 <Typography style={{ fontWeight: 'bold' }}>
@@ -717,12 +748,7 @@ const DcsCatalogAccordion = ({ subjects = [], owners = [], languages = [], stage
             <AccordionDetails>
               {Object.keys(accordionMap[lc] || {}).length ? (
                 Object.keys(accordionMap[lc] || {})?.map((username) => (
-                  <Accordion
-                    id={`${lc}--${username}`}
-                    key={username}
-                    onChange={(event, expanded) => handleOwnerAccordionChange(lc, username, expanded)}
-                    defaultExpanded={lc == hashParts[0] && username === hashParts[1]}
-                  >
+                  <Accordion id={`${lc}--${username}`} key={username} onChange={(event, expanded) => handleOwnerAccordionChange(lc, username, expanded)}>
                     <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                       <Tooltip title={username} arrow>
                         <Typography style={{ fontWeight: 'bold' }}>
@@ -735,14 +761,8 @@ const DcsCatalogAccordion = ({ subjects = [], owners = [], languages = [], stage
                         Object.keys(accordionMap[lc][username] || {})?.map((reponame) => {
                           const id = `${username}/${reponame}`;
                           const topEntry = topCatalogEntriesData[id];
-                          console.log(topCatalogEntriesData, id, topCatalogEntriesData[id]);
                           return (
-                            <Accordion
-                              id={`${lc}--${username}--${reponame}`}
-                              key={id}
-                              onChange={(event, expanded) => handleTopCatalogEntriesAccordionChange(topEntry, expanded)}
-                              defaultExpanded={lc == hashParts[0] && username === hashParts[1] && topEntry.name == hashParts[2]}
-                            >
+                            <Accordion id={`${lc}--${username}--${reponame}`} key={id} onChange={(event, expanded) => handleTopCatalogEntriesAccordionChange(topEntry, expanded)}>
                               <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                                 <Tooltip title={topEntry.subject} arrow>
                                   <Typography style={{ fontWeight: 'bold' }}>
@@ -751,17 +771,30 @@ const DcsCatalogAccordion = ({ subjects = [], owners = [], languages = [], stage
                                 </Tooltip>
                               </AccordionSummary>
                               <AccordionDetails>
-                                <h3 style={{ paddingLeft: '10px', margin: 0 }}>
-                                  <a
-                                    href={`https://preview.door43.org/u/${topCatalogEntriesData[id].full_name}/${topCatalogEntriesData[id].branch_or_tag_name}`}
-                                    style={{ textDecoration: 'none' }}
-                                    target="_blank"
-                                    rel="noreferrer noopener"
-                                  >
-                                    Preview / PDF
-                                  </a>
-                                </h3>
-                                {accordionMap[lc][username][reponame]?.length ? (
+                                <ul style={{ paddingTop: 0, marginTop: 0 }}>
+                                  <li>
+                                    <a
+                                      href={`https://preview.door43.org/u/${topCatalogEntriesData[id].full_name}/${topCatalogEntriesData[id].branch_or_tag_name}`}
+                                      style={{ textDecoration: 'none' }}
+                                      target="_blank"
+                                      rel="noreferrer noopener"
+                                    >
+                                      Preview / PDF
+                                    </a>
+                                  </li>
+                                  <li>
+                                    <a
+                                      href={`${dcsURL}/${topCatalogEntriesData[id].full_name}/archive/${topCatalogEntriesData[id].branch_or_tag_name}.zip`}
+                                      style={{ textDecoration: 'none' }}
+                                      target="_blank"
+                                      rel="noreferrer noopener"
+                                    >
+                                      Source Files (Zipped)
+                                    </a>
+                                  </li>
+                                </ul>
+                                {accordionMap[lc][username][reponame] ?
+                                  accordionMap[lc][username][reponame]?.length ? (
                                   <div style={{ paddingLeft: '10px' }}>
                                     <h4>Downloadables:</h4>
                                     {accordionMap[lc][username][reponame]?.map((entry) => (
@@ -769,9 +802,6 @@ const DcsCatalogAccordion = ({ subjects = [], owners = [], languages = [], stage
                                         id={`${lc}--${username}--${reponame}--${entry.branch_or_tag_name}`}
                                         key={entry.branch_or_tag_name}
                                         onChange={(event, expanded) => handleDownloadableEntryChange(entry, expanded)}
-                                        defaultExpanded={
-                                          lc == hashParts[0] && username === hashParts[1] && topEntry.name == hashParts[2] && entry.branch_or_tag_name == hashParts[3]
-                                        }
                                       >
                                         <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                                           <Tooltip title={entry.release?.name} arrow>
@@ -780,7 +810,6 @@ const DcsCatalogAccordion = ({ subjects = [], owners = [], languages = [], stage
                                         </AccordionSummary>
                                         <AccordionDetails>
                                           {allowedDownloadableTypes.map((type) => {
-                                            console.log(entry.downloadableTypes);
                                             if (!(type in entry.downloadableTypes) || !entry.downloadableTypes[type].length) {
                                               return null;
                                             }
@@ -789,7 +818,7 @@ const DcsCatalogAccordion = ({ subjects = [], owners = [], languages = [], stage
                                                 <div>{type.charAt(0).toUpperCase() + type.slice(1)}</div>
                                                 <ul>
                                                   {entry.downloadableTypes[type].map((format) => {
-                                                    const description = getDescription(format, dcsApiURL);
+                                                    const description = getDescription(format, dcsURL);
                                                     const cleanHTML = DOMPurify.sanitize(description, {
                                                       ALLOWED_TAGS: ['a', 'b', 'i', 'em', 'strong'],
                                                       ALLOWED_ATTR: ['href', 'title', 'style', 'target'],
@@ -814,7 +843,7 @@ const DcsCatalogAccordion = ({ subjects = [], owners = [], languages = [], stage
                                       </Accordion>
                                     ))}
                                   </div>
-                                ) : null}
+                                ) : null : <CircularProgress />}
                               </AccordionDetails>
                             </Accordion>
                           );
@@ -849,7 +878,7 @@ DcsCatalogAccordion.propTypes = {
   owners: PropTypes.array,
   subjects: PropTypes.array,
   stage: PropTypes.string,
-  dcsApiURL: PropTypes.object,
+  dcsURL: PropTypes.string,
 };
 
 export default DcsCatalogAccordion;

@@ -11,15 +11,20 @@ export default defineConfig({
           src: './index-build.html',
           dest: '',
           rename: 'index.html'
+        },
+        {
+          src: './index-obs.html',
+          dest: '',
+          rename: 'obs.html'
         }
       ]
     })
   ],
   build: {
     lib: {
-      entry: './src/components/DcsCatalogAccordion.jsx',
-      name: 'DcsCatalogAccordion',
-      fileName: (format) => `dcs-catalog-accordion.${format}.js`,
+      entry: './src/index.js',
+      name: 'DcsMapAndAccordion',
+      fileName: (format) => `dcs-map-and-accordion.${format}.js`,
       formats: ['umd', 'es'],
     },
     rollupOptions: {

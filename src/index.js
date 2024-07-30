@@ -1,3 +1,4 @@
 import DcsCatalogAccordion from './components/DcsCatalogAccordion';
+import WorldLanguageMap from './components/WorldLanguageMap';
 
-export default DcsCatalogAccordion;
+export { DcsCatalogAccordion, WorldLanguageMap };
