@@ -778,17 +778,7 @@ const DcsCatalogAccordion = ({ subjects, owners, languages, stage, subjectsExpan
                                       target="_blank"
                                       rel="noreferrer noopener"
                                     >
-                                      Preview / PDF
-                                    </a>
-                                  </li>
-                                  <li key="source">
-                                    <a
-                                      href={`${dcsURL}/${topCatalogEntriesData[id].full_name}/archive/${topCatalogEntriesData[id].branch_or_tag_name}.zip`}
-                                      style={{ textDecoration: 'none' }}
-                                      target="_blank"
-                                      rel="noreferrer noopener"
-                                    >
-                                      Source Files (Zipped)
+                                      Preview / PDF (Website)
                                     </a>
                                   </li>
                                   <li key="dcs">
@@ -799,6 +789,16 @@ const DcsCatalogAccordion = ({ subjects, owners, languages, stage, subjectsExpan
                                       rel="noreferrer noopener"
                                     >
                                       View on DCS (Website)
+                                    </a>
+                                  </li>
+                                  <li key="source">
+                                    <a
+                                      href={`${dcsURL}/${topCatalogEntriesData[id].full_name}/archive/${topCatalogEntriesData[id].branch_or_tag_name}.zip`}
+                                      style={{ textDecoration: 'none' }}
+                                      target="_blank"
+                                      rel="noreferrer noopener"
+                                    >
+                                      Source Files (Zipped)
                                     </a>
                                   </li>
                                 </ul>
