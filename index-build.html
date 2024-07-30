@@ -11,6 +11,10 @@
   <script>
     // Wait for the DOM to be fully loaded
     document.addEventListener('DOMContentLoaded', function () {
+      const urlParams = new URLSearchParams(window.location.search);
+      const subjects = urlParams.getAll('subject');
+
+      // Use the subjectValues array as needed
       // Ensure React and ReactDOM are available
       if (React && ReactDOM && DcsMapAndAccordion) {
         const { createElement } = React;
@@ -23,12 +27,12 @@
         map.render(
           createElement(WorldLanguageMap, { onContinentClick: function (languages) {
             accordion.render(
-              createElement(DcsCatalogAccordion, { subjects: [], languages })
+              createElement(DcsCatalogAccordion, { subjects, languages })
             );
           }})
         );
         accordion.render(
-          createElement(DcsCatalogAccordion, { subjects: [], languages: [] })
+          createElement(DcsCatalogAccordion, { subjects, languages: [] })
         );
       } else {
         console.error('React, ReactDOM, or DcsCatalogAccordion is not available.');
