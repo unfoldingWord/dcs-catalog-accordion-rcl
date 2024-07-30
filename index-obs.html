@@ -9,8 +9,20 @@
   <script src="https://unpkg.com/react-dom/umd/react-dom.development.js"></script>
   <script src="./dcs-map-and-accordion.umd.js"></script>
   <script>
+    const DEFAULT_SUBJECTS = ['Open Bible Stories', 'TSV OBS Translation Notes', 'TSV OBS Translation Questions', 'TSV OBS Study Notes', 'TSV OBS Study Questions'];
+
     // Wait for the DOM to be fully loaded
     document.addEventListener('DOMContentLoaded', function () {
+      const urlParams = new URLSearchParams(window.location.search);
+      let subjects = urlParams.getAll('subject');
+      let languages = urlParams.getAll('language');
+      let owners = urlParams.getAll('owner');
+      let stage = urlParams.get('stage') || 'prod';
+
+      if (subjects.length === 0) {
+        subjects = DEFAULT_SUBJECTS;
+      }
+
       // Ensure React and ReactDOM are available
       if (React && ReactDOM && DcsMapAndAccordion) {
         const { createElement } = React;
@@ -21,14 +33,15 @@
         const map = createRoot(document.getElementById('world-map-div'));
         const accordion = createRoot(document.getElementById('dcs-catalog-accordion-div'));
         map.render(
-          createElement(WorldLanguageMap, { onContinentClick: function (languages) {
+          createElement(WorldLanguageMap, { onContinentClick: function (langs) {
+            langs = langs ?? languages;
             accordion.render(
-              createElement(DcsCatalogAccordion, { subjects: ['Open Bible Stories'], languages })
+              createElement(DcsCatalogAccordion, { subjects, languages: langs, subjectsExpandedByDefault: ['Open Bible Stories'] })
             );
           }})
         );
         accordion.render(
-          createElement(DcsCatalogAccordion, { subjects: ['Open Bible Stories'], languages: [] })
+          createElement(DcsCatalogAccordion, { subjects, languages: [], subjectsExpandedByDefault: ['Open Bible Stories'] })
         );
       } else {
         console.error('React, ReactDOM, or DcsCatalogAccordion is not available.');

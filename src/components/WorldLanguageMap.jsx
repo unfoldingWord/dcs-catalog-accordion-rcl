@@ -10,11 +10,9 @@ const WorldLanguageMap = ({ onContinentClick }) => {
   useEffect(() => {
     const handleContinentClick = (event) => {
       let continentId = event.target.id?.split('-')[0];
-      console.log(continentId, event.target.tagName);
       if (!(continentId in mapData)) {
         const parentElement = event.target.parentElement;
         continentId = parentElement?.id?.split('-')[0];
-        console.log(parentElement, parentElement?.tagName, parentElement?.id);
       }
       if (continentId in mapData) {
         setSelectedContinent(continentId);

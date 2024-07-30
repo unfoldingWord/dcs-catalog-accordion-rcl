@@ -29,7 +29,7 @@
         const accordion = createRoot(document.getElementById('dcs-catalog-accordion-div'));
         map.render(
           createElement(WorldLanguageMap, { onContinentClick: function (langs) {
-            languages = langs;
+            langs = langs ?? languages;
             accordion.render(
               createElement(DcsCatalogAccordion, { subjects, languages, owners, stage })
             );

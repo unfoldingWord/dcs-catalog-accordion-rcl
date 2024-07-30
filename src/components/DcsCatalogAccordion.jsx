@@ -494,7 +494,7 @@ const DEFAULT_DCS_URL = 'https://git.door43.org';
 const API_PATH = 'api/v1';
 const DEFAULT_STAGE = 'prod';
 
-const DcsCatalogAccordion = ({ subjects, owners, languages, stage, dcsURL = DEFAULT_DCS_URL }) => {
+const DcsCatalogAccordion = ({ subjects, owners, languages, stage, subjectsExpandedByDefault, dcsURL = DEFAULT_DCS_URL }) => {
   const [languagesData, setLanguagesData] = useState({});
   const [ownersData, setOwnersData] = useState({});
   const [topCatalogEntriesData, setTopCatalogEntriesData] = useState({});
@@ -648,7 +648,6 @@ const DcsCatalogAccordion = ({ subjects, owners, languages, stage, dcsURL = DEFA
     };
 
     const collapseAllAccordions = () => {
-      console.log('COLLABSING');
       const accordions = document.querySelectorAll('.MuiAccordion-root');
       accordions.forEach((accordion) => {
         if (accordion.classList.contains('Mui-expanded')) {
@@ -663,7 +662,6 @@ const DcsCatalogAccordion = ({ subjects, owners, languages, stage, dcsURL = DEFA
 
   useEffect(() => {
     const handleAccordionIdToShow = async () => {
-      console.log('IN SHOW', accordionIdToShow);
       const [lang, username, reponame, version] = accordionIdToShow.split('--');
 
       let langAccordion = lang && document.getElementById(lang);
@@ -697,7 +695,7 @@ const DcsCatalogAccordion = ({ subjects, owners, languages, stage, dcsURL = DEFA
       } else if (reponame in (accordionMap?.[lang]?.[username] || []) && !accordionMap[lang][username][reponame]) {
         const repoAccordion = document.getElementById(`${lang}--${username}--${reponame}`);
         if (repoAccordion) {
-          repoAccordion.firstElementChild?.click();
+            repoAccordion.firstElementChild?.click();
         }
         if (version) {
           const timeout = 5000; // 5 seconds
@@ -762,7 +760,7 @@ const DcsCatalogAccordion = ({ subjects, owners, languages, stage, dcsURL = DEFA
                           const id = `${username}/${reponame}`;
                           const topEntry = topCatalogEntriesData[id];
                           return (
-                            <Accordion id={`${lc}--${username}--${reponame}`} key={id} onChange={(event, expanded) => handleTopCatalogEntriesAccordionChange(topEntry, expanded)}>
+                            <Accordion id={`${lc}--${username}--${reponame}`} key={id} onChange={(event, expanded) => handleTopCatalogEntriesAccordionChange(topEntry, expanded)} defaultExpanded={!accordionIdToShow && subjectsExpandedByDefault?.includes(topEntry.subject)}>
                               <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                                 <Tooltip title={topEntry.subject} arrow>
                                   <div style={{ display: 'flex', width: '100%', alignItems: 'center' }}>
@@ -772,8 +770,8 @@ const DcsCatalogAccordion = ({ subjects, owners, languages, stage, dcsURL = DEFA
                                 </Tooltip>
                               </AccordionSummary>
                               <AccordionDetails>
-                                <ul style={{ paddingTop: 0, marginTop: 0 }}>
-                                  <li>
+                                <ul key="links" style={{ paddingTop: 0, marginTop: 0 }}>
+                                  <li key="pdf">
                                     <a
                                       href={`https://preview.door43.org/u/${topCatalogEntriesData[id].full_name}/${topCatalogEntriesData[id].branch_or_tag_name}`}
                                       style={{ textDecoration: 'none' }}
@@ -783,7 +781,7 @@ const DcsCatalogAccordion = ({ subjects, owners, languages, stage, dcsURL = DEFA
                                       Preview / PDF
                                     </a>
                                   </li>
-                                  <li>
+                                  <li key="source">
                                     <a
                                       href={`${dcsURL}/${topCatalogEntriesData[id].full_name}/archive/${topCatalogEntriesData[id].branch_or_tag_name}.zip`}
                                       style={{ textDecoration: 'none' }}
@@ -793,9 +791,19 @@ const DcsCatalogAccordion = ({ subjects, owners, languages, stage, dcsURL = DEFA
                                       Source Files (Zipped)
                                     </a>
                                   </li>
+                                  <li key="dcs">
+                                    <a
+                                      href={`${dcsURL}/${topCatalogEntriesData[id].full_name}/src/${topCatalogEntriesData[id].ref_type}/${topCatalogEntriesData[id].branch_or_tag_name}`}
+                                      style={{ textDecoration: 'none' }}
+                                      target="_blank"
+                                      rel="noreferrer noopener"
+                                    >
+                                      See on DCS
+                                    </a>
+                                  </li>
                                 </ul>
                                 {accordionMap[lc][username][reponame]?.length ? (
-                                  <div style={{ paddingLeft: '10px' }}>
+                                  <div style={{ paddingLeft: '10px' }} key="downloadables">
                                     <h4>Downloadables:</h4>
                                     {accordionMap[lc][username][reponame]?.map((entry) => (
                                       <Accordion
@@ -879,6 +887,7 @@ DcsCatalogAccordion.propTypes = {
   languages: PropTypes.array,
   owners: PropTypes.array,
   subjects: PropTypes.array,
+  subjectsExpandedByDefault: PropTypes.array,
   stage: PropTypes.string,
   dcsURL: PropTypes.string,
 };
