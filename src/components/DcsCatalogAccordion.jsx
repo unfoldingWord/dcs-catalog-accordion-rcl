@@ -107,7 +107,7 @@ const buildQueryString = (keyedArrays) => {
     const values = keyedArrays[key];
     if (values) {
       if (Array.isArray(values)) {
-        if(values.length) {
+        if (values.length) {
           parts.push(`${encodeURIComponent(key)}=${encodeURIComponent(values.join(','))}`);
         }
       } else {
@@ -280,14 +280,14 @@ async function getDownloadableTypes(entries) {
   //   },
   //   top_entry
   // );
-  downloadable_types = addAssetToDownloadableTypes(
-    downloadable_types,
-    {
-      name: top_entry.name + '-' + top_entry.branch_or_tag_name + '.zip',
-      browser_download_url: top_entry.zipball_url,
-    },
-    top_entry
-  );
+  // downloadable_types = addAssetToDownloadableTypes(
+  //   downloadable_types,
+  //   {
+  //     name: top_entry.name + '-' + top_entry.branch_or_tag_name + '.zip',
+  //     browser_download_url: top_entry.zipball_url,
+  //   },
+  //   top_entry
+  // );
 
   for (let i = 0; i < entries.length; i++) {
     let entry = entries[i];
@@ -317,7 +317,7 @@ async function getDownloadableTypes(entries) {
         } catch (error) {
           console.error('Failed to fetch link assets', error);
         }
-      } else {
+      } else if (!asset.name.toLowerCase().endsWith('.pdf')) {
         downloadable_types = addAssetToDownloadableTypes(downloadable_types, asset, entry);
       }
     }
@@ -590,7 +590,7 @@ const DcsCatalogAccordion = ({ subjects, owners, languages, stage, dcsURL = DEFA
             );
             const otherVersionsWithAssets = [];
             for (let i = 0; i < response.data.data.length; i++) {
-              if (response.data.data[i].release?.assets?.length > 0) {
+              if (response.data.data[i].release?.assets?.filter((asset) => !asset.name.toLowerCase().endsWith('.pdf')).length > 0) {
                 response.data.data[i].downloadableTypes = await getDownloadableTypes([response.data.data[i]]);
                 otherVersionsWithAssets.push(response.data.data[i]);
               }
@@ -648,7 +648,7 @@ const DcsCatalogAccordion = ({ subjects, owners, languages, stage, dcsURL = DEFA
     };
 
     const collapseAllAccordions = () => {
-      console.log("COLLABSING")
+      console.log('COLLABSING');
       const accordions = document.querySelectorAll('.MuiAccordion-root');
       accordions.forEach((accordion) => {
         if (accordion.classList.contains('Mui-expanded')) {
@@ -663,7 +663,7 @@ const DcsCatalogAccordion = ({ subjects, owners, languages, stage, dcsURL = DEFA
 
   useEffect(() => {
     const handleAccordionIdToShow = async () => {
-      console.log("IN SHOW", accordionIdToShow);
+      console.log('IN SHOW', accordionIdToShow);
       const [lang, username, reponame, version] = accordionIdToShow.split('--');
 
       let langAccordion = lang && document.getElementById(lang);
@@ -682,7 +682,7 @@ const DcsCatalogAccordion = ({ subjects, owners, languages, stage, dcsURL = DEFA
           langAccordion.scrollIntoView();
         }
         setAccordionIdToShow('');
-      }
+      };
 
       if (lang in accordionMap && !accordionMap[lang]) {
         langAccordion?.firstElementChild?.click();
@@ -765,9 +765,10 @@ const DcsCatalogAccordion = ({ subjects, owners, languages, stage, dcsURL = DEFA
                             <Accordion id={`${lc}--${username}--${reponame}`} key={id} onChange={(event, expanded) => handleTopCatalogEntriesAccordionChange(topEntry, expanded)}>
                               <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                                 <Tooltip title={topEntry.subject} arrow>
-                                  <Typography style={{ fontWeight: 'bold' }}>
-                                    {topEntry.title} {topEntry.branch_or_tag_name}
-                                  </Typography>
+                                  <div style={{ display: 'flex', width: '100%', alignItems: 'center' }}>
+                                    <Typography style={{ fontWeight: 'bold', flex: 1 }}>{topEntry.title}</Typography>
+                                    <Typography style={{ fontWeight: 'normal', marginRight: '1rem' }}>{topEntry.branch_or_tag_name}</Typography>{' '}
+                                  </div>
                                 </Tooltip>
                               </AccordionSummary>
                               <AccordionDetails>
@@ -793,8 +794,7 @@ const DcsCatalogAccordion = ({ subjects, owners, languages, stage, dcsURL = DEFA
                                     </a>
                                   </li>
                                 </ul>
-                                {accordionMap[lc][username][reponame] ?
-                                  accordionMap[lc][username][reponame]?.length ? (
+                                {accordionMap[lc][username][reponame]?.length ? (
                                   <div style={{ paddingLeft: '10px' }}>
                                     <h4>Downloadables:</h4>
                                     {accordionMap[lc][username][reponame]?.map((entry) => (
@@ -843,7 +843,9 @@ const DcsCatalogAccordion = ({ subjects, owners, languages, stage, dcsURL = DEFA
                                       </Accordion>
                                     ))}
                                   </div>
-                                ) : null : <CircularProgress />}
+                                ) : (
+                                  ''
+                                )}
                               </AccordionDetails>
                             </Accordion>
                           );
