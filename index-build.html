@@ -13,6 +13,9 @@
     document.addEventListener('DOMContentLoaded', function () {
       const urlParams = new URLSearchParams(window.location.search);
       const subjects = urlParams.getAll('subject');
+      let languages = urlParams.getAll('language');
+      let owners = urlParams.getAll('owner');
+      let stage = urlParams.get('stage') || 'prod';
 
       // Use the subjectValues array as needed
       // Ensure React and ReactDOM are available
@@ -25,14 +28,15 @@
         const map = createRoot(document.getElementById('world-map-div'));
         const accordion = createRoot(document.getElementById('dcs-catalog-accordion-div'));
         map.render(
-          createElement(WorldLanguageMap, { onContinentClick: function (languages) {
+          createElement(WorldLanguageMap, { onContinentClick: function (langs) {
+            languages = langs;
             accordion.render(
-              createElement(DcsCatalogAccordion, { subjects, languages })
+              createElement(DcsCatalogAccordion, { subjects, languages, owners, stage })
             );
           }})
         );
         accordion.render(
-          createElement(DcsCatalogAccordion, { subjects, languages: [] })
+          createElement(DcsCatalogAccordion, { subjects, languages, owners, stage })
         );
       } else {
         console.error('React, ReactDOM, or DcsCatalogAccordion is not available.');
