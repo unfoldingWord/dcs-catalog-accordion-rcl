@@ -1,7 +1,7 @@
 {
   "name": "dcs-catalog-accordion-rcl",
   "private": false,
-  "version": "0.1.5",
+  "version": "0.1.6",
   "type": "module",
   "main": "dist/dcs-catalog-accordion.umd.js",
   "module": "dist/dcs-catalog-accordion.es.js",
