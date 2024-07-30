@@ -750,7 +750,7 @@ const DcsCatalogAccordion = ({ subjects, owners, languages, stage, subjectsExpan
                     <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                       <Tooltip title={username} arrow>
                         <Typography style={{ fontWeight: 'bold' }}>
-                          {ownersData[username] && ownersData[username].full_name ? `${ownersData[username].full_name} (${username})` : username}
+                          Published by: {ownersData[username] && ownersData[username].full_name ? `${ownersData[username].full_name} (${username})` : username}
                         </Typography>
                       </Tooltip>
                     </AccordionSummary>
@@ -798,7 +798,7 @@ const DcsCatalogAccordion = ({ subjects, owners, languages, stage, subjectsExpan
                                       target="_blank"
                                       rel="noreferrer noopener"
                                     >
-                                      See on DCS
+                                      View on DCS (Website)
                                     </a>
                                   </li>
                                 </ul>
