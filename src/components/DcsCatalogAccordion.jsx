@@ -1,5 +1,5 @@
 // React imports
-import { useEffect, useState, useMemo, useCallback } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 
 // Prop Types for type checking in React
 import PropTypes from 'prop-types';
@@ -270,7 +270,7 @@ async function getDownloadableTypes(entries) {
 
   if (entries.length < 1) return downloadable_types;
 
-  const top_entry = entries[0];
+  // const top_entry = entries[0];
 
   // downloadable_types = addAssetToDownloadableTypes(
   //   downloadable_types,
