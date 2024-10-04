@@ -31,12 +31,28 @@
           createElement(WorldLanguageMap, { onContinentClick: function (langs) {
             langs = langs ?? languages;
             accordion.render(
-              createElement(DcsCatalogAccordion, { subjects, languages, owners, stage })
+              createElement(DcsCatalogAccordion, { subjects, languages: langs })
             );
           }})
         );
+        let dcsURL = 'https://git.door43.org';
+        if (urlParams.get('server')) {
+          switch (urlParams.get('server').toUpperCase()) {
+            case 'QA':
+              dcsURL = 'https://qa.door43.org';
+              break;
+            case 'PROD':
+              dcsURL = 'https://git.door43.org';
+              break;
+            default:
+              if (urlParams.get('server').startsWith('http')) {
+                dcsURL = urlParams.get('server');
+              }
+          }
+        }
+        console.log("USING THIS DCS SERVER: "+dcsURL)
         accordion.render(
-          createElement(DcsCatalogAccordion, { subjects, languages, owners, stage })
+          createElement(DcsCatalogAccordion, { subjects, languages: [], dcsURL })
         );
       } else {
         console.error('React, ReactDOM, or DcsCatalogAccordion is not available.');
@@ -46,8 +62,8 @@
 </head>
 
 <body>
-  <div id="world-map-div" style="width: 600px"></div>
-  <div id="dcs-catalog-accordion-div" style="width: 600px"></div>
+  <div id="world-map-div" style="width: 1024px"></div>
+  <div id="dcs-catalog-accordion-div" style="width: 1024px"></div>
 </body>
 
 </html>

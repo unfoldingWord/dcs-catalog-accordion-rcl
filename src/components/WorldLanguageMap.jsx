@@ -25,6 +25,12 @@ const WorldLanguageMap = ({ onContinentClick }) => {
     const handleMouseEnter = (event) => {
       if (event.target.tagName === 'path' && event.target.id in mapData) {
         event.target.style.fill = mapData[event.target.id].overcolor;
+      } else if (event.target.tagName === 'text') {
+        const targetId = event.target.id.replace('-text', '');
+        const element = document.getElementById(targetId);
+        if (element) {
+          element.style.fill = mapData[targetId].overcolor;
+        }
       }
     };
   
@@ -62,12 +68,12 @@ const WorldLanguageMap = ({ onContinentClick }) => {
             </g>
 
             <g id="text-abb">
-                <text id="africa-title" transform="matrix(1 0 0 1 498 425)">AFRICA</text>
-                <text id="asia-title" transform="matrix(1 0 0 1 699 282)">ASIA</text>
-                <text id="europe-title" transform="matrix(1 0 0 1 533 289)">EUROPE</text>
-                <text id="namerica-title" transform="matrix(1 0 0 1 175 317)"><tspan x="0" y="0">NORTH</tspan><tspan x="-8.9" y="19.2">AMERICA</tspan></text>
-                <text id="oceania-title" transform="matrix(1 0 0 1 803 532)">OCEANIA</text>
-                <text id="samerica-title" transform="matrix(1 0 0 1 292 485)"><tspan x="0" y="0">SOUTH</tspan><tspan x="-9.3" y="19.2">AMERICA</tspan></text>
+                <text id="africa-text" transform="matrix(1 0 0 1 498 425)">AFRICA</text>
+                <text id="asia-text" transform="matrix(1 0 0 1 699 282)">ASIA</text>
+                <text id="europe-text" transform="matrix(1 0 0 1 533 289)">EUROPE</text>
+                <text id="namerica-text" transform="matrix(1 0 0 1 175 317)"><tspan x="0" y="0">NORTH</tspan><tspan x="-8.9" y="19.2">AMERICA</tspan></text>
+                <text id="oceania-text" transform="matrix(1 0 0 1 803 532)">OCEANIA</text>
+                <text id="samerica-text" transform="matrix(1 0 0 1 292 485)"><tspan x="0" y="0">SOUTH</tspan><tspan x="-9.3" y="19.2">AMERICA</tspan></text>
             </g>
         </svg>
     </div>

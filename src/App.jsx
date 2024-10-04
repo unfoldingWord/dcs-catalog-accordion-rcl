@@ -14,7 +14,7 @@ function App() {
   };
 
   return (
-    <div style={{width: "600px"}}>
+    <div style={{width: "1024px"}}>
       <WorldLanguageMap onContinentClick={setLanguages} />
       <DcsCatalogAccordion {...accordionProps} />
     </div>

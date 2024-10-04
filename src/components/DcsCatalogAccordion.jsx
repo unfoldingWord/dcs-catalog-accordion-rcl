@@ -11,6 +11,19 @@ import axios from 'axios';
 import { Accordion, AccordionSummary, AccordionDetails, Tooltip, Typography } from '@mui/material';
 import CircularProgress from '@mui/joy/CircularProgress';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
+import LanguageIcon from '@mui/icons-material/Language';
+import AudioFileIcon from '@mui/icons-material/AudioFile';
+import VideoFileIcon from '@mui/icons-material/VideoFile';
+import OpenInNewIcon from '@mui/icons-material/OpenInNew';
+import FolderZipIcon from '@mui/icons-material/FolderZip';
+import ArticleIcon from '@mui/icons-material/Article';
+import YouTubeIcon from '@mui/icons-material/YouTube';
+import BookIcon from '@mui/icons-material/Book';
+import AutoStoriesIcon from '@mui/icons-material/AutoStories';
+import CodeIcon from '@mui/icons-material/Code';
+import SourceIcon from '@mui/icons-material/Source';
+import SubscriptionsIcon from '@mui/icons-material/Subscriptions';
 
 // DOMPurify for sanitizing HTML
 import DOMPurify from 'dompurify';
@@ -325,7 +338,7 @@ async function getDownloadableTypes(entries) {
   return downloadable_types;
 }
 
-function getDescription(fmt, dcs_domain = DEFAULT_DCS_URL) {
+function getDescription(fmt, dcsURL = DEFAULT_DCS_URL) {
   let title = fmt.asset.name;
 
   if (!fmt.format) {
@@ -333,7 +346,7 @@ function getDescription(fmt, dcs_domain = DEFAULT_DCS_URL) {
   }
 
   let fmt_description = '';
-  let fmt_class = '';
+  let IconComponentClass = ArticleIcon;
 
   let format_parts = fmt.format.split(' ');
   let format_map = {};
@@ -355,77 +368,75 @@ function getDescription(fmt, dcs_domain = DEFAULT_DCS_URL) {
 
   let mime_parts = mime.split('/');
   let show_size = true;
-  let is_source_regex = new RegExp(`${dcs_domain}/[^/]+/[^/]+/archive/`, 'gi');
+  let is_source_regex = new RegExp(`${dcsURL}/[^/]+/[^/]+/archive/`, 'gi');
   switch (mime_parts[mime_parts.length - 1]) {
     case 'pdf':
       fmt_description = 'PDF';
-      fmt_class = 'fa-file-pdf';
+      IconComponentClass = PictureAsPdfIcon;
       break;
     case 'youtube':
       title = fmt.name;
       show_size = false;
-      fmt_class = 'fa-brands fa-youtube';
+      IconComponentClass = YouTubeIcon;
       fmt_description = 'Website';
       break;
     case 'bloom':
       title = fmt.name;
       show_size = false;
       fmt_description = 'Website';
-      fmt_class = 'fa-book';
+      IconComponentClass = BookIcon;
       break;
     case 'door43.org':
       title = fmt.name;
       fmt_description = 'Website';
-      fmt_class = 'fa-globe';
+      IconComponentClass = LanguageIcon;
       show_size = false;
       break;
-    case new URL(dcs_domain).hostname:
+    case new URL(dcsURL).hostname:
       title = fmt.name;
       fmt_description = 'Source Files';
-      fmt_class = 'fa-file-lines';
+      IconComponentClass = FolderZipIcon;
       show_size = false;
       break;
     case 'docx':
       fmt_description = 'Word Document';
-      fmt_class = 'fa-file-word';
       break;
     case 'odt':
       fmt_description = 'OpenDocument Text';
-      fmt_class = 'fa-file-text';
       break;
     case 'epub':
       fmt_description = 'ePub Book';
-      fmt_class = 'fa-book';
+      IconComponentClass = AutoStoriesIcon;
       break;
     case 'markdown':
     case 'md':
       fmt_description = 'Markdown';
-      fmt_class = 'fa-file-text';
+      IconComponentClass = SourceIcon;
       break;
     case 'html':
       fmt_description = 'HTML';
-      fmt_class = 'fa-code';
+      IconComponentClass = CodeIcon;
       break;
     case 'usfm':
       fmt_description = 'USFM';
-      fmt_class = 'fa-file-text';
+      IconComponentClass = SourceIcon;
       break;
     case 'mp3':
       fmt_description = 'MP3';
-      fmt_class = 'fa-file-audio';
+      IconComponentClass = AudioFileIcon;
       break;
     case 'mp4':
       fmt_description = 'MP4';
-      fmt_class = 'fa-file-video';
+      IconComponentClass = VideoFileIcon;
       break;
     case '3gp':
     case '3gpp':
       fmt_description = '3GP';
-      fmt_class = 'fa-file-video';
+      IconComponentClass = VideoFileIcon;
       break;
     case 'zip':
       {
-        fmt_class = 'fa-file-zipper';
+        IconComponentClass = FolderZipIcon;
         fmt_description = 'Zipped';
         let match = is_source_regex.exec(fmt.asset.browser_download_url);
         if (match) {
@@ -436,12 +447,11 @@ function getDescription(fmt, dcs_domain = DEFAULT_DCS_URL) {
     default:
       title = fmt.name;
       fmt_description = fmt.format;
-      fmt_class = 'fa-file';
       break;
   }
 
   if (fmt.quality && fmt.quality != fmt_description) {
-    fmt_description += '&nbsp;&ndash;&nbsp;' + fmt.quality;
+    fmt_description += '; ' + fmt.quality;
   }
 
   let size_string = '';
@@ -453,14 +463,21 @@ function getDescription(fmt, dcs_domain = DEFAULT_DCS_URL) {
   }
 
   if (size_string) {
-    size_string = ', ' + size_string;
+    size_string = '; ' + size_string;
   }
 
+  let TitleComponent = <>{title}</>
   if ('identifier' in fmt) {
-    title = `<span style="color: #606060">Chapter&nbsp;${parseInt(fmt.identifier).toLocaleString()}:</span> ${title}`;
+    TitleComponent = <><span style={{ color: "#606060"}}>Chapter {parseInt(fmt.identifier).toLocaleString()}:</span> {title}</>;
   }
 
-  return `<i class="fa ${fmt_class}" aria-hidden="true"></i>&ensp;${title}&nbsp;<span style="color: #606060">(${fmt_description}${size_string})</span>`;
+  return (
+    <>
+      <IconComponentClass style={{ marginRight: '8px' }} />
+      {TitleComponent}
+      <span style={{ color: "#606060", marginLeft: "10px" }}>({fmt_description}{size_string})</span>
+    </>
+  );
 }
 
 function getSize(file_size) {
@@ -494,7 +511,7 @@ const DEFAULT_DCS_URL = 'https://git.door43.org';
 const API_PATH = 'api/v1';
 const DEFAULT_STAGE = 'prod';
 
-const DcsCatalogAccordion = ({ subjects, owners, languages, stage, subjectsExpandedByDefault, dcsURL = DEFAULT_DCS_URL }) => {
+const DcsCatalogAccordion = ({ subjects, owners, languages, stage, dcsURL = DEFAULT_DCS_URL }) => {
   const [languagesData, setLanguagesData] = useState({});
   const [ownersData, setOwnersData] = useState({});
   const [topCatalogEntriesData, setTopCatalogEntriesData] = useState({});
@@ -544,7 +561,7 @@ const DcsCatalogAccordion = ({ subjects, owners, languages, stage, subjectsExpan
       const fetchTopCatalogEntries = async () => {
         if (expanded && !accordionMap?.[lc]?.[username]) {
           try {
-            const response = await axios.get(`${dcsURL}/${API_PATH}/catalog/search?${buildQueryString({ subject: subjects, lang: [lc], owner: [username], stage: stage })}`);
+            const response = await axios.get(`${dcsURL}/${API_PATH}/catalog/search?${buildQueryString({ subject: subjects, lang: [lc], owner: [username], stage: stage, sort: "title", order: "asc" })}`);
             const accordionMapOwnerTopCatalogEntriesMap = {};
             const newTopCatalogEntriesMap = {};
             response.data.data.forEach((info) => {
@@ -721,17 +738,42 @@ const DcsCatalogAccordion = ({ subjects, owners, languages, stage, subjectsExpan
       }
     };
 
-    if (accordionIdToShow && accordionMap) {
-      handleAccordionIdToShow();
+    const handleAccordionsNeedingExpanding = () => {
+      const accordionsToExpand = document.querySelectorAll('.needs-expanding');
+      console.log("NEEDS EXPANDING", accordionsToExpand);
+      accordionsToExpand.forEach((accordion) => {
+        accordion?.firstElementChild?.click()
+      })
+    };
+
+    if (accordionIdToShow) {
+      if (accordionMap) {
+        handleAccordionIdToShow();
+      }
+    } else {
+      handleAccordionsNeedingExpanding()
     }
   }, [accordionIdToShow, accordionMap, topCatalogEntriesData]);
+
+  const accordionSummaryStyles = {
+    '&.Mui-expanded': {
+      backgroundColor: '#416a8b',
+      color: 'white',
+      '& a': {
+        color: 'lightgrey',
+      },
+    },
+    '.MuiAccordionSummary-content': {
+      margin: "12px 0px !important",
+    }
+  };
 
   return (
     <div>
       {Object.keys(accordionMap || {}).length ? (
         Object.keys(accordionMap)?.map((lc) => (
-          <Accordion id={lc} key={lc} onChange={(event, expanded) => handleLanguageAccordionChange(lc, expanded)}>
-            <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+          <Accordion style={{ borderStyle: 'ridge' }} id={lc} key={lc} onChange={(event, expanded) => handleLanguageAccordionChange(lc, expanded)}>
+            <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={accordionSummaryStyles}>
               <Tooltip title={lc} arrow>
                 <Typography style={{ fontWeight: 'bold' }}>
                   {lc}{' '}
@@ -746,11 +788,19 @@ const DcsCatalogAccordion = ({ subjects, owners, languages, stage, subjectsExpan
             <AccordionDetails>
               {Object.keys(accordionMap[lc] || {}).length ? (
                 Object.keys(accordionMap[lc] || {})?.map((username) => (
-                  <Accordion id={`${lc}--${username}`} key={username} onChange={(event, expanded) => handleOwnerAccordionChange(lc, username, expanded)}>
-                    <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                  <Accordion style={{ borderStyle: 'ridge' }} id={`${lc}--${username}`} key={username} onChange={(event, expanded) => handleOwnerAccordionChange(lc, username, expanded)}>
+                    <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={accordionSummaryStyles}>
                       <Tooltip title={username} arrow>
                         <Typography style={{ fontWeight: 'bold' }}>
-                          Published by: {ownersData[username] && ownersData[username].full_name ? `${ownersData[username].full_name} (${username})` : username}
+                          Published by: {ownersData?.[username]?.full_name ? `${ownersData[username].full_name}` + (ownersData[username].full_name.toLowerCase().replace(/[^a-z0-9_\.-]/g, '') != username.toLowerCase() ? ` (${username})` : '') : username}
+                            <a
+                              href={`https://git.door43.org/${username}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+
+                            >
+                              <OpenInNewIcon style={{fontSize: '1.2em', marginLeft: '10px', padding: '0'}} />
+                            </a>
                         </Typography>
                       </Tooltip>
                     </AccordionSummary>
@@ -760,17 +810,21 @@ const DcsCatalogAccordion = ({ subjects, owners, languages, stage, subjectsExpan
                           const id = `${username}/${reponame}`;
                           const topEntry = topCatalogEntriesData[id];
                           return (
-                            <Accordion id={`${lc}--${username}--${reponame}`} key={id} onChange={(event, expanded) => handleTopCatalogEntriesAccordionChange(topEntry, expanded)} defaultExpanded={!accordionIdToShow && subjectsExpandedByDefault?.includes(topEntry.subject)}>
-                              <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                            <Accordion
+                              style={{ borderStyle: 'ridge' }}
+                              id={`${lc}--${username}--${reponame}`}
+                              key={id}
+                              onChange={(event, expanded) => handleTopCatalogEntriesAccordionChange(topEntry, expanded)}
+                            >
+                              <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={accordionSummaryStyles}>
                                 <Tooltip title={topEntry.subject} arrow>
-                                  <div style={{ display: 'flex', width: '100%', alignItems: 'center' }}>
-                                    <Typography style={{ fontWeight: 'bold', flex: 1 }}>{topEntry.title}</Typography>
-                                    <Typography style={{ fontWeight: 'normal', marginRight: '1rem' }}>{topEntry.branch_or_tag_name}</Typography>{' '}
+                                  <div style={{ width: '100%', alignItems: 'center' }}>
+                                    <Typography style={{ fontWeight: 'bold' }}>{topEntry.title} ({topEntry.branch_or_tag_name})</Typography>
                                   </div>
                                 </Tooltip>
                               </AccordionSummary>
                               <AccordionDetails>
-                                <ul key="links" style={{ paddingTop: 0, marginTop: 0 }}>
+                                <ul id="downloadable-links" key="links" style={{ listStyle: "none" }}>
                                   <li key="pdf">
                                     <a
                                       href={`https://preview.door43.org/u/${topCatalogEntriesData[id].full_name}/${topCatalogEntriesData[id].branch_or_tag_name}`}
@@ -778,7 +832,8 @@ const DcsCatalogAccordion = ({ subjects, owners, languages, stage, subjectsExpan
                                       target="_blank"
                                       rel="noreferrer noopener"
                                     >
-                                      Preview / PDF (Website)
+                                    <PictureAsPdfIcon style={{ marginRight: '0.5rem', fontSize: '1em',  }} />
+                                    Preview / PDF (Website)
                                     </a>
                                   </li>
                                   <li key="dcs">
@@ -788,6 +843,7 @@ const DcsCatalogAccordion = ({ subjects, owners, languages, stage, subjectsExpan
                                       target="_blank"
                                       rel="noreferrer noopener"
                                     >
+                                      <LanguageIcon style={{ marginRight: '0.5rem', fontSize: '1em',  }} />
                                       View on DCS (Website)
                                     </a>
                                   </li>
@@ -798,22 +854,24 @@ const DcsCatalogAccordion = ({ subjects, owners, languages, stage, subjectsExpan
                                       target="_blank"
                                       rel="noreferrer noopener"
                                     >
+                                      <FolderZipIcon style={{ marginRight: '0.5rem', fontSize: '1em',  }} />
                                       Source Files (Zipped)
                                     </a>
                                   </li>
                                 </ul>
                                 {accordionMap[lc][username][reponame]?.length ? (
                                   <div style={{ paddingLeft: '10px' }} key="downloadables">
-                                    <h4>Downloadables:</h4>
+                                    <h4>Video / Audio / Other Formats:</h4>
                                     {accordionMap[lc][username][reponame]?.map((entry) => (
                                       <Accordion
+                                        style={{ borderStyle: 'ridge' }}
                                         id={`${lc}--${username}--${reponame}--${entry.branch_or_tag_name}`}
                                         key={entry.branch_or_tag_name}
                                         onChange={(event, expanded) => handleDownloadableEntryChange(entry, expanded)}
                                       >
-                                        <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                                        <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={accordionSummaryStyles}>
                                           <Tooltip title={entry.release?.name} arrow>
-                                            <Typography>{entry.branch_or_tag_name}</Typography>
+                                            <Typography><SubscriptionsIcon style={{ verticalAlign: 'middle'  }} /> {entry.branch_or_tag_name}</Typography>
                                           </Tooltip>
                                         </AccordionSummary>
                                         <AccordionDetails>
@@ -823,23 +881,53 @@ const DcsCatalogAccordion = ({ subjects, owners, languages, stage, subjectsExpan
                                             }
                                             return (
                                               <div key={type} style={{ paddingLeft: '10px' }}>
-                                                <div>{type.charAt(0).toUpperCase() + type.slice(1)}</div>
-                                                <ul>
+                                                <div><strong><em>{type.charAt(0).toUpperCase() + type.slice(1)}</em></strong></div>
+                                                <ul style={{ listStyle: "none" }}>
                                                   {entry.downloadableTypes[type].map((format) => {
+                                                    console.log(format);
                                                     const description = getDescription(format, dcsURL);
-                                                    const cleanHTML = DOMPurify.sanitize(description, {
-                                                      ALLOWED_TAGS: ['a', 'b', 'i', 'em', 'strong'],
-                                                      ALLOWED_ATTR: ['href', 'title', 'style', 'target'],
-                                                    });
                                                     return (
                                                       <li key={format.name}>
-                                                        <a
-                                                          href={format.asset.browser_download_url}
+                                                      <a
+                                                        href={format.asset.browser_download_url}
+                                                        style={{ textDecoration: 'none' }}
+                                                        target="_blank"
+                                                        rel="noreferrer noopener"
+                                                      >{description}</a>
+                                                      {format.chapters?.length > 0 ? (
+                                                        <Tooltip title="Expand to download individual chapters" arrow>
+                                                          <button
+                                                            onClick={(e) => {
+                                                            e.preventDefault();
+                                                            const ulElement = e.target.nextElementSibling;
+                                                            if (ulElement) {
+                                                              ulElement.style.display = ulElement.style.display === 'none' ? 'block' : 'none';
+                                                                e.target.textContent = ulElement.style.display === 'none' ? '+' : '—';
+                                                            }
+                                                            }}
+                                                            style={{
+                                                              background: 'none',
+                                                              border: 'none',
+                                                              color: 'inherit',
+                                                              cursor: 'pointer',
+                                                              fontSize: '1em',
+                                                              marginLeft: '0.5rem'
+                                                            }}
+                                                          >+</button>
+                                                        </Tooltip>) : null}
+                                                      {format.chapters?.length > 0 ? (<ul style={{display: "none", listStyle: "none" }}>
+                                                        {format.chapters.map((chapter) => (
+                                                        <li key={chapter.name}>
+                                                          <a
+                                                          href={chapter.asset.browser_download_url}
                                                           style={{ textDecoration: 'none' }}
                                                           target="_blank"
-                                                          dangerouslySetInnerHTML={{ __html: cleanHTML }}
-                                                          rel="noreferrer noopener"
-                                                        ></a>
+                                                          rel="noreferrer noopener">
+                                                          {chapter.name.toLowerCase().endsWith('.mp4') ? <VideoFileIcon style={{ marginRight: '0.5rem', fontSize: '1em' }} /> : <AudioFileIcon style={{ marginRight: '0.5rem', fontSize: '1em' }} />}
+                                                          {chapter.name}
+                                                          </a>
+                                                        </li>))}
+                                                      </ul>) : ''}
                                                       </li>
                                                     );
                                                   })}
@@ -887,7 +975,6 @@ DcsCatalogAccordion.propTypes = {
   languages: PropTypes.array,
   owners: PropTypes.array,
   subjects: PropTypes.array,
-  subjectsExpandedByDefault: PropTypes.array,
   stage: PropTypes.string,
   dcsURL: PropTypes.string,
 };
