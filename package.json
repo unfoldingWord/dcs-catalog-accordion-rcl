@@ -1,10 +1,10 @@
 {
   "name": "dcs-catalog-accordion-rcl",
   "private": false,
-  "version": "0.1.11",
+  "version": "0.1.12",
   "type": "module",
-  "main": "dist/dcs-catalog-accordion.umd.js",
-  "module": "dist/dcs-catalog-accordion.es.js",
+  "main": "dist/dcs-map-and-accordion.umd.js",
+  "module": "dist/dcs-map-and-accordion.es.js",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
