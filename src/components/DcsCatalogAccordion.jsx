@@ -799,7 +799,7 @@ const DcsCatalogAccordion = ({ subjects, owners, languages, stage, dcsURL = DEFA
                               rel="noopener noreferrer"
 
                             >
-                              <OpenInNewIcon style={{fontSize: '1.2em', marginLeft: '10px', padding: '0'}} />
+                              <OpenInNewIcon style={{fontSize: '1.2em', marginLeft: '10px', padding: '0', color: 'inherit'}} />
                             </a>
                         </Typography>
                       </Tooltip>
