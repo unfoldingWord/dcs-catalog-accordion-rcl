@@ -32,5 +32,4 @@ dist-ssr
 *storybook.log
 
 # Storybook
-.storybook
 storybook-static
