@@ -1,24 +1,31 @@
-import DcsCatalogAccordion from './components/DcsCatalogAccordion';
 import WorldLanguageMap from './components/WorldLanguageMap';
 import './App.css';
 import { useState } from 'react';
 
-const subjects = [];
+const urlParams = new URLSearchParams(window.location.search);
+const subjects = urlParams.getAll('subject') || [];
+const stage = urlParams.get('stage') || 'other';
 
 function App() {
   const [languages, setLanguages] = useState([]);
 
-  const accordionProps = {
-    languages,
-    subjects,
-  };
-
   return (
-    <div style={{width: "1024px"}}>
-      <WorldLanguageMap onContinentClick={setLanguages} />
-      <DcsCatalogAccordion {...accordionProps} />
-    </div>
-  )
+    <>
+      <div style={{ width: '1024px' }}>
+        <WorldLanguageMap subjects={subjects} stage={stage} onContinentClick={setLanguages} />
+      </div>
+
+      <div>
+        <select multiple style={{ resize: "both" }}>
+          {languages.map((lang, index) => (
+            <option key={index} value={lang.lc}>
+              {lang.ln} ({lang.lc})
+            </option>
+          ))}
+        </select>
+      </div>
+    </>
+  );
 }
 
-export default App
+export default App;

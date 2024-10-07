@@ -28,3 +28,9 @@ dist-ssr
 
 # vscode
 .history
+
+*storybook.log
+
+# Storybook
+.storybook
+storybook-static
