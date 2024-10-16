@@ -23,7 +23,7 @@ import BookIcon from '@mui/icons-material/Book';
 import AutoStoriesIcon from '@mui/icons-material/AutoStories';
 import CodeIcon from '@mui/icons-material/Code';
 import SourceIcon from '@mui/icons-material/Source';
-import SubscriptionsIcon from '@mui/icons-material/Subscriptions';
+import PermMediaIcon from '@mui/icons-material/PermMedia';
 
 // DOMPurify for sanitizing HTML
 import DOMPurify from 'dompurify';
@@ -330,7 +330,7 @@ async function getDownloadableTypes(entries) {
         } catch (error) {
           console.error('Failed to fetch link assets', error);
         }
-      } else if (!asset.name.toLowerCase().endsWith('.pdf')) {
+      } else {
         downloadable_types = addAssetToDownloadableTypes(downloadable_types, asset, entry);
       }
     }
@@ -606,10 +606,13 @@ const DcsCatalogAccordion = ({ subjects, owners, languages, stage, dcsURL = DEFA
               )}&includeHistory=1&sort=released&order=desc&stage=${stage || 'prod'}`
             );
             const otherVersionsWithAssets = [];
+            let extensionsToIgnore = [];
             for (let i = 0; i < response.data.data.length; i++) {
-              if (response.data.data[i].release?.assets?.filter((asset) => !asset.name.toLowerCase().endsWith('.pdf')).length > 0) {
+              if (response.data.data[i].release?.assets?.filter(asset => !extensionsToIgnore.includes(getFileExt(asset.browser_download_url)))?.length > 0) {
                 response.data.data[i].downloadableTypes = await getDownloadableTypes([response.data.data[i]]);
                 otherVersionsWithAssets.push(response.data.data[i]);
+                const myExtensionTypes = response.data.data[i].release?.assets?.map(asset => getFileExt(asset.browser_download_url)).filter(ext => ext.trim());
+                extensionsToIgnore = [...extensionsToIgnore, ...myExtensionTypes]
               }
             }
             setAccordionMap((prevState) => ({
@@ -809,6 +812,11 @@ const DcsCatalogAccordion = ({ subjects, owners, languages, stage, dcsURL = DEFA
                         Object.keys(accordionMap[lc][username] || {})?.map((reponame) => {
                           const id = `${username}/${reponame}`;
                           const topEntry = topCatalogEntriesData[id];
+                          const topEntryPDFs = topEntry?.release?.assets?.filter(asset => asset.name.endsWith(".pdf"));
+                          let topEntryPDF = null;
+                          if (topEntryPDFs?.length == 1) {
+                            topEntryPDF = topEntryPDFs[0];
+                          }
                           return (
                             <Accordion
                               style={{ borderStyle: 'ridge' }}
@@ -825,7 +833,7 @@ const DcsCatalogAccordion = ({ subjects, owners, languages, stage, dcsURL = DEFA
                               </AccordionSummary>
                               <AccordionDetails>
                                 <ul id="downloadable-links" key="links" style={{ listStyle: "none" }}>
-                                  <li key="pdf">
+                                  <li key="preview">
                                     <a
                                       href={`https://preview.door43.org/u/${topCatalogEntriesData[id].full_name}/${topCatalogEntriesData[id].branch_or_tag_name}`}
                                       style={{ textDecoration: 'none' }}
@@ -836,6 +844,19 @@ const DcsCatalogAccordion = ({ subjects, owners, languages, stage, dcsURL = DEFA
                                     Preview / PDF (Website)
                                     </a>
                                   </li>
+                                  {topEntryPDF ?
+                                  <li key="pdf">
+                                    <a
+                                      href={topEntryPDF.browser_download_url}
+                                      style={{ textDecoration: 'none' }}
+                                      target="_blank"
+                                      rel="noreferrer noopener"
+                                    >
+                                    <PictureAsPdfIcon style={{ marginRight: '0.5rem', fontSize: '1em',  }} />
+                                      {topEntryPDF.name} (Latest PDF)
+                                    </a>
+                                  </li>
+                                  : null}
                                   <li key="dcs">
                                     <a
                                       href={`${dcsURL}/${topCatalogEntriesData[id].full_name}/src/${topCatalogEntriesData[id].ref_type}/${topCatalogEntriesData[id].branch_or_tag_name}`}
@@ -861,7 +882,7 @@ const DcsCatalogAccordion = ({ subjects, owners, languages, stage, dcsURL = DEFA
                                 </ul>
                                 {accordionMap[lc][username][reponame]?.length ? (
                                   <div style={{ paddingLeft: '10px' }} key="downloadables">
-                                    <h4>Video / Audio / Other Formats:</h4>
+                                    <h4>PDF / Video / Audio Downloadables:</h4>
                                     {accordionMap[lc][username][reponame]?.map((entry) => (
                                       <Accordion
                                         style={{ borderStyle: 'ridge' }}
@@ -871,7 +892,7 @@ const DcsCatalogAccordion = ({ subjects, owners, languages, stage, dcsURL = DEFA
                                       >
                                         <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={accordionSummaryStyles}>
                                           <Tooltip title={entry.release?.name} arrow>
-                                            <Typography><SubscriptionsIcon style={{ verticalAlign: 'middle'  }} /> {entry.branch_or_tag_name}</Typography>
+                                            <Typography><PermMediaIcon style={{ verticalAlign: 'middle'  }} /> {entry.branch_or_tag_name}</Typography>
                                           </Tooltip>
                                         </AccordionSummary>
                                         <AccordionDetails>
@@ -884,7 +905,6 @@ const DcsCatalogAccordion = ({ subjects, owners, languages, stage, dcsURL = DEFA
                                                 <div><strong><em>{type.charAt(0).toUpperCase() + type.slice(1)}</em></strong></div>
                                                 <ul style={{ listStyle: "none" }}>
                                                   {entry.downloadableTypes[type].map((format) => {
-                                                    console.log(format);
                                                     const description = getDescription(format, dcsURL);
                                                     return (
                                                       <li key={format.name}>
