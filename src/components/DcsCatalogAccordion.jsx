@@ -8,8 +8,7 @@ import PropTypes from 'prop-types';
 import axios from 'axios';
 
 // Material UI components
-import { Accordion, AccordionSummary, AccordionDetails, Tooltip, Typography } from '@mui/material';
-import CircularProgress from '@mui/joy/CircularProgress';
+import { Accordion, AccordionSummary, AccordionDetails, Tooltip, Typography, CircularProgress } from '@mui/material';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
 import LanguageIcon from '@mui/icons-material/Language';
@@ -24,9 +23,6 @@ import AutoStoriesIcon from '@mui/icons-material/AutoStories';
 import CodeIcon from '@mui/icons-material/Code';
 import SourceIcon from '@mui/icons-material/Source';
 import PermMediaIcon from '@mui/icons-material/PermMedia';
-
-// DOMPurify for sanitizing HTML
-import DOMPurify from 'dompurify';
 
 let downloads = [];
 let allowedDownloadableTypes = ['text', 'audio', 'video', 'other'];
@@ -524,11 +520,11 @@ const DcsCatalogAccordion = ({ subjects, owners, languages, stage, dcsURL = DEFA
         if (expanded && !accordionMap?.[lc]) {
           try {
             const response = await axios.get(
-              `${dcsURL}/${API_PATH}/catalog/list/owners?${buildQueryString({ subject: subjects, lang: [lc], owner: owners, stage: [stage || DEFAULT_STAGE] })}`
+              `${dcsURL}/${API_PATH}/catalog/list/owners?${buildQueryString({ subject: subjects, lang: [lc.toLowerCase()], owner: owners, stage: [stage || DEFAULT_STAGE] })}`
             );
             const newOwnersData = {};
             const accordionMapOwnerMap = {};
-            response.data.data.forEach((info) => {
+            (response.data.data || []).forEach((info) => {
               newOwnersData[info.username] = info;
               accordionMapOwnerMap[info.username] = null;
             });
@@ -561,10 +557,10 @@ const DcsCatalogAccordion = ({ subjects, owners, languages, stage, dcsURL = DEFA
       const fetchTopCatalogEntries = async () => {
         if (expanded && !accordionMap?.[lc]?.[username]) {
           try {
-            const response = await axios.get(`${dcsURL}/${API_PATH}/catalog/search?${buildQueryString({ subject: subjects, lang: [lc], owner: [username], stage: stage, sort: "title", order: "asc" })}`);
+            const response = await axios.get(`${dcsURL}/${API_PATH}/catalog/search?${buildQueryString({ subject: subjects, lang: [lc.toLowerCase()], owner: [username], stage: stage, sort: "title", order: "asc" })}`);
             const accordionMapOwnerTopCatalogEntriesMap = {};
             const newTopCatalogEntriesMap = {};
-            response.data.data.forEach((info) => {
+            (response.data.data || []).forEach((info) => {
               newTopCatalogEntriesMap[info.full_name] = info;
               accordionMapOwnerTopCatalogEntriesMap[info.name] = null;
             });
@@ -596,9 +592,9 @@ const DcsCatalogAccordion = ({ subjects, owners, languages, stage, dcsURL = DEFA
   );
 
   const handleTopCatalogEntriesAccordionChange = useCallback(
-    (topCatalogEntry, expanded) => {
+    (lc, username, reponame, topCatalogEntry, expanded) => {
       const fetchCatalogEntriesWithDownloadables = async () => {
-        if (expanded && !accordionMap?.[topCatalogEntry.language]?.[topCatalogEntry.owner]?.[topCatalogEntry.full_name]) {
+        if (expanded && !accordionMap?.[lc]?.[username]?.[reponame]) {
           try {
             const response = await axios.get(
               `${dcsURL}/${API_PATH}/catalog/search?owner=${encodeURIComponent(topCatalogEntry.owner)}&repo=${encodeURIComponent(
@@ -607,21 +603,22 @@ const DcsCatalogAccordion = ({ subjects, owners, languages, stage, dcsURL = DEFA
             );
             const otherVersionsWithAssets = [];
             let extensionsToIgnore = [];
-            for (let i = 0; i < response.data.data.length; i++) {
-              if (response.data.data[i].release?.assets?.filter(asset => !extensionsToIgnore.includes(getFileExt(asset.browser_download_url)))?.length > 0) {
-                response.data.data[i].downloadableTypes = await getDownloadableTypes([response.data.data[i]]);
-                otherVersionsWithAssets.push(response.data.data[i]);
-                const myExtensionTypes = response.data.data[i].release?.assets?.map(asset => getFileExt(asset.browser_download_url)).filter(ext => ext.trim());
+            const entries = response.data.data || [];
+            for (let i = 0; i < entries.length; i++) {
+              if (entries[i].release?.assets?.filter(asset => !extensionsToIgnore.includes(getFileExt(asset.browser_download_url)))?.length > 0) {
+                entries[i].downloadableTypes = await getDownloadableTypes([entries[i]]);
+                otherVersionsWithAssets.push(entries[i]);
+                const myExtensionTypes = entries[i].release?.assets?.map(asset => getFileExt(asset.browser_download_url)).filter(ext => ext.trim());
                 extensionsToIgnore = [...extensionsToIgnore, ...myExtensionTypes]
               }
             }
             setAccordionMap((prevState) => ({
               ...prevState,
-              [topCatalogEntry.language]: {
-                ...prevState[topCatalogEntry.language],
-                [topCatalogEntry.owner]: {
-                  ...prevState[topCatalogEntry.language][topCatalogEntry.owner],
-                  [topCatalogEntry.name]: otherVersionsWithAssets,
+              [lc]: {
+                ...prevState[lc],
+                [username]: {
+                  ...prevState[lc][username],
+                  [reponame]: otherVersionsWithAssets,
                 },
               },
             }));
@@ -633,7 +630,7 @@ const DcsCatalogAccordion = ({ subjects, owners, languages, stage, dcsURL = DEFA
 
       if (expanded) {
         if (!accordionIdToShow) {
-          window.history.pushState(null, null, `#${topCatalogEntry.language}--${topCatalogEntry.owner}--${topCatalogEntry.name}`);
+          window.history.pushState(null, null, `#${lc}--${username}--${reponame}`);
         }
         fetchCatalogEntriesWithDownloadables();
       }
@@ -641,9 +638,9 @@ const DcsCatalogAccordion = ({ subjects, owners, languages, stage, dcsURL = DEFA
     [accordionMap, accordionIdToShow, dcsURL, stage]
   );
 
-  const handleDownloadableEntryChange = (entry, expanded) => {
+  const handleDownloadableEntryChange = (lc, username, reponame, entry, expanded) => {
     if (expanded) {
-      window.history.pushState(null, null, `#${entry.language}--${entry.owner}--${entry.name}--${entry.branch_or_tag_name}`);
+      window.history.pushState(null, null, `#${lc}--${username}--${reponame}--${entry.branch_or_tag_name}`);
     }
   };
 
@@ -653,7 +650,7 @@ const DcsCatalogAccordion = ({ subjects, owners, languages, stage, dcsURL = DEFA
         const response = await axios.get(`${dcsURL}/${API_PATH}/catalog/list/languages?${buildQueryString({ owner: owners, subject: subjects, stage: [stage || DEFAULT_STAGE] })}`);
         const langData = {};
         const accMap = {};
-        response.data.data.forEach((info) => {
+        (response.data.data || []).forEach((info) => {
           if (!languages?.length || languages?.includes(info.lc)) {
             langData[info.lc] = info;
             accMap[info.lc] = null;
@@ -795,7 +792,7 @@ const DcsCatalogAccordion = ({ subjects, owners, languages, stage, dcsURL = DEFA
                     <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={accordionSummaryStyles}>
                       <Tooltip title={username} arrow>
                         <Typography style={{ fontWeight: 'bold' }}>
-                          Published by: {ownersData?.[username]?.full_name ? `${ownersData[username].full_name}` + (ownersData[username].full_name.toLowerCase().replace(/[^a-z0-9_\.-]/g, '') != username.toLowerCase() ? ` (${username})` : '') : username}
+                          Published by: {ownersData?.[username]?.full_name ? `${ownersData[username].full_name}` + (ownersData[username].full_name.toLowerCase().replace(/[^a-z0-9_.-]/g, '') != username.toLowerCase() ? ` (${username})` : '') : username}
                             <a
                               href={`https://git.door43.org/${username}`}
                               target="_blank"
@@ -822,7 +819,7 @@ const DcsCatalogAccordion = ({ subjects, owners, languages, stage, dcsURL = DEFA
                               style={{ borderStyle: 'ridge' }}
                               id={`${lc}--${username}--${reponame}`}
                               key={id}
-                              onChange={(event, expanded) => handleTopCatalogEntriesAccordionChange(topEntry, expanded)}
+                              onChange={(event, expanded) => handleTopCatalogEntriesAccordionChange(lc, username, reponame, topEntry, expanded)}
                             >
                               <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={accordionSummaryStyles}>
                                 <Tooltip title={topEntry.subject} arrow>
@@ -888,7 +885,7 @@ const DcsCatalogAccordion = ({ subjects, owners, languages, stage, dcsURL = DEFA
                                         style={{ borderStyle: 'ridge' }}
                                         id={`${lc}--${username}--${reponame}--${entry.branch_or_tag_name}`}
                                         key={entry.branch_or_tag_name}
-                                        onChange={(event, expanded) => handleDownloadableEntryChange(entry, expanded)}
+                                        onChange={(event, expanded) => handleDownloadableEntryChange(lc, username, reponame, entry, expanded)}
                                       >
                                         <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={accordionSummaryStyles}>
                                           <Tooltip title={entry.release?.name} arrow>
