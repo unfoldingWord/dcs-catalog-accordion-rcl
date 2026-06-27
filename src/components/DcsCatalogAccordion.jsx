@@ -876,6 +876,19 @@ const DcsCatalogAccordion = ({ subjects, owners, languages, stage, dcsURL = DEFA
                                       Source Files (Zipped)
                                     </a>
                                   </li>
+                                  {topEntry.metadata_type === "rc" && (
+                                  <li key="sb">
+                                    <a
+                                      href={`${dcsURL}/${topCatalogEntriesData[id].full_name}/sb/${topCatalogEntriesData[id].branch_or_tag_name}.zip`}
+                                      style={{ textDecoration: 'none' }}
+                                      target="_blank"
+                                      rel="noreferrer noopener"
+                                    >
+                                      <FolderZipIcon style={{ marginRight: '0.5rem', fontSize: '1em',  }} />
+                                      Source Files as Scripture Burrito (Zipped)
+                                    </a>
+                                  </li>
+                                  )}
                                 </ul>
                                 {accordionMap[lc][username][reponame]?.length ? (
                                   <div style={{ paddingLeft: '10px' }} key="downloadables">
