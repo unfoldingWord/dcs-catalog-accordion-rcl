@@ -965,6 +965,12 @@ const DcsCatalogAccordion = ({ subjects, owners, languages, stage, dcsURL = DEFA
                             }
                           }
                           const latestDownloadableTypes = getLatestDownloadableTypes(versionEntries);
+                          // A YouTube link stays in Other Downloads but is also promoted to the
+                          // main links so users can't miss that a video version exists.
+                          const latestYouTube = latestDownloadableTypes?.other?.find((fmt) => {
+                            const url = fmt.asset?.browser_download_url?.toLowerCase() || '';
+                            return fmt.format?.toLowerCase().includes('youtube') || url.includes('youtube.com') || url.includes('youtu.be');
+                          });
                           return (
                             <Accordion
                               sx={accordionStyles}
@@ -994,6 +1000,19 @@ const DcsCatalogAccordion = ({ subjects, owners, languages, stage, dcsURL = DEFA
                                     >
                                     <PictureAsPdfIcon style={{ marginRight: '0.5rem', fontSize: '1em',  }} />
                                       {topEntryPDF.name} (Latest PDF)
+                                    </a>
+                                  </li>
+                                  : null}
+                                  {latestYouTube ?
+                                  <li key="youtube">
+                                    <a
+                                      href={latestYouTube.asset.browser_download_url}
+                                      style={{ textDecoration: 'none' }}
+                                      target="_blank"
+                                      rel="noreferrer noopener"
+                                    >
+                                    <YouTubeIcon style={{ marginRight: '0.5rem', fontSize: '1.2em', verticalAlign: 'text-bottom', color: '#FF0000' }} />
+                                      Watch on YouTube (Website)
                                     </a>
                                   </li>
                                   : null}
