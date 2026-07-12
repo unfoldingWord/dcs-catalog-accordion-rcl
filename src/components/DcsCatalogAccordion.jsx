@@ -1060,7 +1060,7 @@ const DcsCatalogAccordion = ({ subjects, owners, languages, stage, dcsURL = DEFA
                                       target="_blank"
                                       rel="noreferrer noopener"
                                     >
-                                      <img src="https://git.door43.org/assets/img/favicon.png" alt="" style={{ width: '1.1em', height: '1.1em', marginRight: '0.5rem', verticalAlign: 'text-bottom' }} />
+                                      <img src={`${dcsURL}/assets/img/favicon.png`} alt="" style={{ width: '1.1em', height: '1.1em', marginRight: '0.5rem', verticalAlign: 'text-bottom' }} />
                                       View on DCS (Website)
                                     </a>
                                   </li>
