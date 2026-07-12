@@ -1024,7 +1024,7 @@ const DcsCatalogAccordion = ({ subjects, owners, languages, stage, dcsURL = DEFA
                                       target="_blank"
                                       rel="noreferrer noopener"
                                     >
-                                    <PictureAsPdfIcon style={{ marginRight: '0.5rem', fontSize: '1em',  }} />
+                                    <PictureAsPdfIcon style={{ marginRight: '0.5rem', fontSize: '1.2em', verticalAlign: 'text-bottom', color: '#FA0F00' }} />
                                       {topEntryPDF.name} (Latest PDF)
                                     </a>
                                   </li>
@@ -1049,7 +1049,7 @@ const DcsCatalogAccordion = ({ subjects, owners, languages, stage, dcsURL = DEFA
                                       target="_blank"
                                       rel="noreferrer noopener"
                                     >
-                                    <PictureAsPdfIcon style={{ marginRight: '0.5rem', fontSize: '1em',  }} />
+                                    <img src="https://preview.door43.org/favicon.ico" alt="" style={{ width: '1.1em', height: '1.1em', marginRight: '0.5rem', verticalAlign: 'text-bottom' }} />
                                     Preview / PDF (Website)
                                     </a>
                                   </li>
@@ -1060,7 +1060,7 @@ const DcsCatalogAccordion = ({ subjects, owners, languages, stage, dcsURL = DEFA
                                       target="_blank"
                                       rel="noreferrer noopener"
                                     >
-                                      <LanguageIcon style={{ marginRight: '0.5rem', fontSize: '1em',  }} />
+                                      <img src="https://git.door43.org/assets/img/favicon.png" alt="" style={{ width: '1.1em', height: '1.1em', marginRight: '0.5rem', verticalAlign: 'text-bottom' }} />
                                       View on DCS (Website)
                                     </a>
                                   </li>
