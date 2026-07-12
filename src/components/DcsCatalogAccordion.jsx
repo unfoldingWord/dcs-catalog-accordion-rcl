@@ -1,5 +1,5 @@
 // React imports
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 
 // Prop Types for type checking in React
 import PropTypes from 'prop-types';
@@ -507,12 +507,21 @@ const DEFAULT_DCS_URL = 'https://git.door43.org';
 const API_PATH = 'api/v1';
 const DEFAULT_STAGE = 'prod';
 
+// MUI v6+ wraps the AccordionSummary in a heading element, so the summary button is no
+// longer the accordion root's firstElementChild; query for it to toggle programmatically.
+function clickAccordionSummary(accordion) {
+  accordion?.querySelector('.MuiAccordionSummary-root')?.click();
+}
+
 const DcsCatalogAccordion = ({ subjects, owners, languages, stage, dcsURL = DEFAULT_DCS_URL }) => {
   const [languagesData, setLanguagesData] = useState({});
   const [ownersData, setOwnersData] = useState({});
   const [topCatalogEntriesData, setTopCatalogEntriesData] = useState({});
   const [accordionMap, setAccordionMap] = useState();
-  const [accordionIdToShow, setAccordionIdToShow] = useState(window.location.hash?.substring(1));
+  // The deep-link target lives in a ref so event handlers always see the current value;
+  // the state mirror exists to trigger the effect below when the target is set or cleared.
+  const accordionIdToShowRef = useRef(window.location.hash?.substring(1) || '');
+  const [accordionIdToShow, setAccordionIdToShow] = useState(accordionIdToShowRef.current);
 
   const handleLanguageAccordionChange = useCallback(
     (lc, expanded) => {
@@ -543,13 +552,13 @@ const DcsCatalogAccordion = ({ subjects, owners, languages, stage, dcsURL = DEFA
       };
 
       if (expanded) {
-        if (!accordionIdToShow) {
+        if (!accordionIdToShowRef.current) {
           window.history.pushState(null, null, `#${lc}`);
         }
         fetchOwners();
       }
     },
-    [accordionMap, accordionIdToShow, dcsURL, subjects, owners, stage]
+    [accordionMap, dcsURL, subjects, owners, stage]
   );
 
   const handleOwnerAccordionChange = useCallback(
@@ -582,13 +591,13 @@ const DcsCatalogAccordion = ({ subjects, owners, languages, stage, dcsURL = DEFA
       };
 
       if (expanded) {
-        if (!accordionIdToShow) {
+        if (!accordionIdToShowRef.current) {
           window.history.pushState(null, null, `#${lc}--${username}`);
         }
         fetchTopCatalogEntries();
       }
     },
-    [accordionMap, accordionIdToShow, dcsURL, subjects, stage]
+    [accordionMap, dcsURL, subjects, stage]
   );
 
   const handleTopCatalogEntriesAccordionChange = useCallback(
@@ -629,17 +638,17 @@ const DcsCatalogAccordion = ({ subjects, owners, languages, stage, dcsURL = DEFA
       };
 
       if (expanded) {
-        if (!accordionIdToShow) {
+        if (!accordionIdToShowRef.current) {
           window.history.pushState(null, null, `#${lc}--${username}--${reponame}`);
         }
         fetchCatalogEntriesWithDownloadables();
       }
     },
-    [accordionMap, accordionIdToShow, dcsURL, stage]
+    [accordionMap, dcsURL, stage]
   );
 
   const handleDownloadableEntryChange = (lc, username, reponame, entry, expanded) => {
-    if (expanded) {
+    if (expanded && !accordionIdToShowRef.current) {
       window.history.pushState(null, null, `#${lc}--${username}--${reponame}--${entry.branch_or_tag_name}`);
     }
   };
@@ -668,7 +677,7 @@ const DcsCatalogAccordion = ({ subjects, owners, languages, stage, dcsURL = DEFA
       const accordions = document.querySelectorAll('.MuiAccordion-root');
       accordions.forEach((accordion) => {
         if (accordion.classList.contains('Mui-expanded')) {
-          accordion.firstElementChild.click();
+          clickAccordionSummary(accordion);
         }
       });
     };
@@ -678,71 +687,110 @@ const DcsCatalogAccordion = ({ subjects, owners, languages, stage, dcsURL = DEFA
   }, [dcsURL, languages, subjects, owners, stage]);
 
   useEffect(() => {
-    const handleAccordionIdToShow = async () => {
+    const handleHashChange = () => {
+      accordionIdToShowRef.current = window.location.hash?.substring(1) || '';
+      setAccordionIdToShow(accordionIdToShowRef.current);
+    };
+
+    window.addEventListener('hashchange', handleHashChange);
+    return () => window.removeEventListener('hashchange', handleHashChange);
+  }, []);
+
+  useEffect(() => {
+    const isExpanded = (accordion) => accordion.classList.contains('Mui-expanded');
+
+    const clearAccordionIdToShow = () => {
+      accordionIdToShowRef.current = '';
+      setAccordionIdToShow('');
+    };
+
+    // Opens the accordion levels named in the URL hash one fetch at a time: each run
+    // expands as deep as the data in accordionMap allows, then waits for the next
+    // accordionMap update to continue. The target is only cleared once the deepest
+    // requested level is open or the fetched data shows it doesn't exist.
+    const handleAccordionIdToShow = () => {
       const [lang, username, reponame, version] = accordionIdToShow.split('--');
 
-      let langAccordion = lang && document.getElementById(lang);
-      let ownerAccordion = username && document.getElementById(`${lang}--${username}`);
-      let repoAccordion = reponame && document.getElementById(`${lang}--${username}--${reponame}`);
-      let versionAccordion = version && document.getElementById(`${lang}--${username}--${reponame}--${version}`);
-
       const finish = () => {
-        if (versionAccordion) {
-          versionAccordion.scrollIntoView();
-        } else if (repoAccordion) {
-          repoAccordion.scrollIntoView();
-        } else if (ownerAccordion) {
-          ownerAccordion.scrollIntoView();
-        } else if (langAccordion) {
-          langAccordion.scrollIntoView();
+        const scrollTarget =
+          (version && document.getElementById(`${lang}--${username}--${reponame}--${version}`)) ||
+          (reponame && document.getElementById(`${lang}--${username}--${reponame}`)) ||
+          (username && document.getElementById(`${lang}--${username}`)) ||
+          document.getElementById(lang);
+        if (scrollTarget) {
+          scrollTarget.scrollIntoView();
         }
-        setAccordionIdToShow('');
+        clearAccordionIdToShow();
       };
 
-      if (lang in accordionMap && !accordionMap[lang]) {
-        langAccordion?.firstElementChild?.click();
-        if (!username || !langAccordion) {
-          finish();
-        }
-      } else if (username in (accordionMap?.[lang] || []) && !accordionMap[lang][username]) {
-        ownerAccordion?.firstElementChild?.click();
-        if (!ownerAccordion || !reponame) {
-          finish();
-        }
-      } else if (reponame in (accordionMap?.[lang]?.[username] || []) && !accordionMap[lang][username][reponame]) {
-        const repoAccordion = document.getElementById(`${lang}--${username}--${reponame}`);
-        if (repoAccordion) {
-            repoAccordion.firstElementChild?.click();
-        }
-        if (version) {
-          const timeout = 5000; // 5 seconds
-          const interval = 500; // 500 ms
-          let elapsedTime = 0;
-          const checkVersionAccordion = setInterval(() => {
-            const versionAccordion = document.getElementById(`${lang}--${username}--${reponame}--${version}`);
-            if (versionAccordion) {
-              versionAccordion.firstElementChild?.click();
-              clearInterval(checkVersionAccordion);
-            } else {
-              elapsedTime += interval;
-              if (elapsedTime >= timeout) {
-                clearInterval(checkVersionAccordion);
-                console.log('Version accordion not found');
-              }
-            }
-          }, interval);
-        }
+      if (!(lang in accordionMap)) {
         finish();
-      } else {
-        finish();
+        return;
       }
+      const langAccordion = document.getElementById(lang);
+      if (!langAccordion) {
+        return;
+      }
+      if (!isExpanded(langAccordion)) {
+        clickAccordionSummary(langAccordion);
+      }
+      if (!username) {
+        finish();
+        return;
+      }
+      if (!accordionMap[lang]) {
+        return; // owners still being fetched
+      }
+
+      if (!(username in accordionMap[lang])) {
+        finish();
+        return;
+      }
+      const ownerAccordion = document.getElementById(`${lang}--${username}`);
+      if (!ownerAccordion) {
+        return;
+      }
+      if (!isExpanded(ownerAccordion)) {
+        clickAccordionSummary(ownerAccordion);
+      }
+      if (!reponame) {
+        finish();
+        return;
+      }
+      if (!accordionMap[lang][username]) {
+        return; // repos still being fetched
+      }
+
+      if (!(reponame in accordionMap[lang][username])) {
+        finish();
+        return;
+      }
+      const repoAccordion = document.getElementById(`${lang}--${username}--${reponame}`);
+      if (!repoAccordion) {
+        return;
+      }
+      if (!isExpanded(repoAccordion)) {
+        clickAccordionSummary(repoAccordion);
+      }
+      if (!version) {
+        finish();
+        return;
+      }
+      if (!accordionMap[lang][username][reponame]) {
+        return; // versions still being fetched
+      }
+
+      const versionAccordion = document.getElementById(`${lang}--${username}--${reponame}--${version}`);
+      if (versionAccordion && !isExpanded(versionAccordion)) {
+        clickAccordionSummary(versionAccordion);
+      }
+      finish();
     };
 
     const handleAccordionsNeedingExpanding = () => {
       const accordionsToExpand = document.querySelectorAll('.needs-expanding');
-      console.log("NEEDS EXPANDING", accordionsToExpand);
       accordionsToExpand.forEach((accordion) => {
-        accordion?.firstElementChild?.click()
+        clickAccordionSummary(accordion);
       })
     };
 
