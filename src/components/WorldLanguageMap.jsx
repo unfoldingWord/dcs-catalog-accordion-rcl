@@ -51,7 +51,7 @@ const WorldLanguageMap = ({ onContinentClick }) => {
         svgElement.removeEventListener('mouseleave', handleMouseLeave, true);
       }
     };
-  }, []);
+  }, [onContinentClick]);
 
   return (
   <div id="mapwrapper" style={{textAlign: 'center'}}>

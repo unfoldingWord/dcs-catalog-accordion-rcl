@@ -33,3 +33,6 @@ dist-ssr
 
 # AI
 .claude
+
+# Storybook build output
+storybook-static
