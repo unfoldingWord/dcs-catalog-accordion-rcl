@@ -350,6 +350,29 @@ function getLatestDownloadableTypes(versionEntries) {
   return merged;
 }
 
+// Repo source zips (git archive and Scripture Burrito) belong under Other Downloads
+// rather than the resource card's main links; they matter less than PDF/YouTube/preview.
+function appendSourceZipFormats(otherFormats, topEntry, dcsURL) {
+  const branch = topEntry.branch_or_tag_name;
+  const pushZip = (name, url) => {
+    otherFormats.push({
+      entry: topEntry,
+      name,
+      ext: 'zip',
+      format: new URL(dcsURL).hostname,
+      quality: '',
+      prefix: '',
+      version: branch,
+      chapters: [],
+      asset: { name, browser_download_url: url, size: 0 },
+    });
+  };
+  pushZip(`${topEntry.name}-${branch}.zip`, `${dcsURL}/${topEntry.full_name}/archive/${branch}.zip`);
+  if (topEntry.metadata_type === 'rc') {
+    pushZip(`${topEntry.name}-${branch}-scripture-burrito.zip`, `${dcsURL}/${topEntry.full_name}/sb/${branch}.zip`);
+  }
+}
+
 function getDescription(fmt, dcsURL = DEFAULT_DCS_URL) {
   let title = fmt.asset.name;
 
@@ -971,6 +994,9 @@ const DcsCatalogAccordion = ({ subjects, owners, languages, stage, dcsURL = DEFA
                             const url = fmt.asset?.browser_download_url?.toLowerCase() || '';
                             return fmt.format?.toLowerCase().includes('youtube') || url.includes('youtube.com') || url.includes('youtu.be');
                           });
+                          if (latestDownloadableTypes && topEntry) {
+                            appendSourceZipFormats(latestDownloadableTypes.other, topEntry, dcsURL);
+                          }
                           return (
                             <Accordion
                               sx={accordionStyles}
@@ -1038,30 +1064,6 @@ const DcsCatalogAccordion = ({ subjects, owners, languages, stage, dcsURL = DEFA
                                       View on DCS (Website)
                                     </a>
                                   </li>
-                                  <li key="source">
-                                    <a
-                                      href={`${dcsURL}/${topCatalogEntriesData[id].full_name}/archive/${topCatalogEntriesData[id].branch_or_tag_name}.zip`}
-                                      style={{ textDecoration: 'none' }}
-                                      target="_blank"
-                                      rel="noreferrer noopener"
-                                    >
-                                      <FolderZipIcon style={{ marginRight: '0.5rem', fontSize: '1em',  }} />
-                                      Source Files (Zipped)
-                                    </a>
-                                  </li>
-                                  {topEntry.metadata_type === "rc" && (
-                                  <li key="sb">
-                                    <a
-                                      href={`${dcsURL}/${topCatalogEntriesData[id].full_name}/sb/${topCatalogEntriesData[id].branch_or_tag_name}.zip`}
-                                      style={{ textDecoration: 'none' }}
-                                      target="_blank"
-                                      rel="noreferrer noopener"
-                                    >
-                                      <FolderZipIcon style={{ marginRight: '0.5rem', fontSize: '1em',  }} />
-                                      Source Files as Scripture Burrito (Zipped)
-                                    </a>
-                                  </li>
-                                  )}
                                 </ul>
                                 {latestDownloadableTypes ? (
                                   allowedDownloadableTypes.map((type) => {
