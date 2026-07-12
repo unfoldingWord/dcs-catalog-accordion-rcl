@@ -1,2 +1,4 @@
 allowBuilds:
   esbuild: false
+overrides:
+  valibot: ^1.4.0
