@@ -55,9 +55,11 @@ Pin the library to an exact version and bump the pin when a new version is relea
 The accordion reads the URL hash on load (and on `hashchange`) and auto-expands down to the target, using `--` as the level separator:
 
 ```
-https://example.org/library#en--unfoldingWord--en_obs--v9
-                            └lang └owner        └repo  └version (each level optional)
+https://example.org/library#en--unfoldingWord--en_obs--audio
+                            └lang └owner        └repo  └section (each level optional)
 ```
+
+The optional fourth part names one of the resource card's download sections (`text`, `audio`, `video`, or `other`).
 
 Expanding accordions by hand writes the same hash back to the URL, so any state is shareable as a link.
 

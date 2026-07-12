@@ -30,12 +30,12 @@ This is a **publishable React component library** (`dcs-catalog-accordion-rcl`),
 Two components are exported from `src/index.js`:
 
 ### `DcsCatalogAccordion` (`src/components/DcsCatalogAccordion.jsx`)
-The core component (~1000 lines). It renders a **lazily-loaded, four-level nested accordion** of the DCS (Door43 Content Service) catalog. Each level fetches its children only when expanded, building up a single `accordionMap` state tree keyed `language → owner → repo (full_name) → entries`:
+The core component (~1000 lines). It renders a **lazily-loaded, three-level nested accordion** (language → owner → resource) of the DCS (Door43 Content Service) catalog, with per-type download sections inside each resource card. Each level fetches its children only when expanded, building up a single `accordionMap` state tree keyed `language → owner → repo (full_name) → entries`:
 
 1. **Languages** — fetched on mount from `catalog/list/languages`.
 2. **Owners** — fetched on language expand from `catalog/list/owners`.
 3. **Top catalog entries** — fetched on owner expand from `catalog/search` (latest release per repo).
-4. **Downloadable versions/formats** — fetched on entry expand from `catalog/search?...&includeHistory=1`, then per-asset metadata is assembled into `DownloadableTypes` (`text`/`audio`/`video`/`other`) via the `Format`/`Chapter` helper classes near the top of the file.
+4. **Downloadable versions/formats** — fetched on entry expand from `catalog/search?...&includeHistory=1`, then per-asset metadata is assembled into `DownloadableTypes` (`text`/`audio`/`video`/`other`) via the `Format`/`Chapter` helper classes near the top of the file. Versions are not shown individually: `getLatestDownloadableTypes` merges each type across versions (newest wins per prefix/extension/quality signature; nothing is dropped within a single version) and the resource card renders one collapsed accordion per non-empty type (`Text/Audio/Video/Other Downloads`, ids `…--text` etc.).
 
 Key cross-cutting details:
 - API base is `dcsURL` (default `https://git.door43.org`) + `API_PATH` (`api/v1`). All requests go through `axios` and `buildQueryString`.
@@ -44,7 +44,7 @@ Key cross-cutting details:
 - **DOM size:** collapsed accordion details are unmounted (`slotProps` transition `unmountOnExit` via `ACCORDION_SLOT_PROPS`), so only expanded subtrees exist in the DOM (~200 collapsed languages are just summary rows).
 - **Language-code casing (subtle):** the DCS catalog endpoints are **case-sensitive** on the `lang` query param, but `catalog/list/languages` returns canonical mixed-case codes (e.g. `ur-Deva`) while search results return lowercase (`ur-deva`). So API queries must lowercase the code (`lc.toLowerCase()`), but the `accordionMap` tree and DOM ids must stay keyed by the original mixed-case `lc` (passed down explicitly to the owner/entry/downloadable handlers — do **not** key off the API's lowercase `.language` field, or nesting and deep-links break). Also note empty results come back as `{"data": null}`, not `[]` — always null-guard `response.data.data`.
 - File-type/format logic lives in standalone helpers (`getFileExt`, `getFormatFromName`, `getDescription`, `getSize`, `add*ToDownloadableTypes`) above the component, mapping extensions/URLs to MIME-ish format strings and MUI icons. `DownloadableFormatList` renders one downloadable-type list (with the per-chapter expander) and is shared by the version cards and the resource card.
-- **Resource card quick links:** the repo-level card lists the newest PDF first (from the top entry's release, falling back to the newest version whose text downloads contain exactly one PDF), then surfaces the newest Audio and Video sets from whichever version has them — users shouldn't have to open version accordions to find the primary downloads.
+- **Resource card quick links:** the repo-level card lists the newest PDF first (from the top entry's release, falling back to the newest version whose text downloads contain exactly one PDF), then the Preview/DCS/source links, then the collapsed per-type download sections. Legacy `…--vN` deep links (from before version accordions were removed) gracefully fall back to opening the resource card.
 
 Props are `languages`, `owners`, `subjects`, `stage`, `dcsURL` (base host only — `API_PATH` is appended internally); the README documents them.
 

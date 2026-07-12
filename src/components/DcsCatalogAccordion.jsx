@@ -322,6 +322,34 @@ async function getDownloadableTypes(entries) {
   return downloadable_types;
 }
 
+// Merges each downloadable type across version entries (which are sorted newest
+// first): an older version's format is only included when no newer version supplied a
+// format with the same prefix/extension/quality, so e.g. OBS v8's docx/epub/odt still
+// surface alongside v9's PDF, but v8's own PDF is superseded. Within a single version
+// nothing is dropped. Returns null while versionEntries is still loading.
+function getLatestDownloadableTypes(versionEntries) {
+  if (!Array.isArray(versionEntries)) return null;
+  const merged = new DownloadableTypes();
+  const seen = {};
+  allowedDownloadableTypes.forEach((type) => {
+    seen[type] = new Set();
+  });
+  versionEntries.forEach((entry) => {
+    allowedDownloadableTypes.forEach((type) => {
+      const entrySignatures = [];
+      (entry.downloadableTypes?.[type] || []).forEach((fmt) => {
+        const signature = `${fmt.prefix}|${getFileExt(fmt.name)}|${fmt.quality}`;
+        if (!seen[type].has(signature)) {
+          merged[type].push(fmt);
+          entrySignatures.push(signature);
+        }
+      });
+      entrySignatures.forEach((signature) => seen[type].add(signature));
+    });
+  });
+  return merged;
+}
+
 function getDescription(fmt, dcsURL = DEFAULT_DCS_URL) {
   let title = fmt.asset.name;
 
@@ -557,6 +585,13 @@ const DEFAULT_STAGE = 'prod';
 // Unmount collapsed accordion details so ~200 collapsed languages don't keep their
 // subtrees (and loading spinners) mounted in the DOM.
 const ACCORDION_SLOT_PROPS = { transition: { unmountOnExit: true } };
+
+const DOWNLOAD_TYPE_ICONS = {
+  text: ArticleIcon,
+  audio: AudioFileIcon,
+  video: VideoFileIcon,
+  other: PermMediaIcon,
+};
 
 const DcsCatalogAccordion = ({ subjects, owners, languages, stage, dcsURL = DEFAULT_DCS_URL }) => {
   const [languagesData, setLanguagesData] = useState({});
@@ -929,8 +964,7 @@ const DcsCatalogAccordion = ({ subjects, owners, languages, stage, dcsURL = DEFA
                               topEntryPDF = pdfFormats[0].asset;
                             }
                           }
-                          const latestAudioEntry = Array.isArray(versionEntries) ? versionEntries.find((e) => e.downloadableTypes?.audio?.length) : null;
-                          const latestVideoEntry = Array.isArray(versionEntries) ? versionEntries.find((e) => e.downloadableTypes?.video?.length) : null;
+                          const latestDownloadableTypes = getLatestDownloadableTypes(versionEntries);
                           return (
                             <Accordion
                               sx={accordionStyles}
@@ -1010,58 +1044,41 @@ const DcsCatalogAccordion = ({ subjects, owners, languages, stage, dcsURL = DEFA
                                   </li>
                                   )}
                                 </ul>
-                                {latestAudioEntry ? (
-                                  <div style={{ paddingLeft: '10px' }} key="latest-audio">
-                                    <h4 style={{ margin: '10px 0 0' }}>
-                                      Audio <span style={{ fontWeight: 'normal', color: '#656d76' }}>({latestAudioEntry.branch_or_tag_name})</span>
-                                    </h4>
-                                    <DownloadableFormatList formats={latestAudioEntry.downloadableTypes.audio} dcsURL={dcsURL} />
-                                  </div>
-                                ) : null}
-                                {latestVideoEntry ? (
-                                  <div style={{ paddingLeft: '10px' }} key="latest-video">
-                                    <h4 style={{ margin: '10px 0 0' }}>
-                                      Video <span style={{ fontWeight: 'normal', color: '#656d76' }}>({latestVideoEntry.branch_or_tag_name})</span>
-                                    </h4>
-                                    <DownloadableFormatList formats={latestVideoEntry.downloadableTypes.video} dcsURL={dcsURL} />
-                                  </div>
-                                ) : null}
-                                {accordionMap[lc][username][reponame]?.length ? (
-                                  <div style={{ paddingLeft: '10px' }} key="downloadables">
-                                    <h4 style={{ margin: '10px 0 4px' }}>All Versions:</h4>
-                                    {accordionMap[lc][username][reponame]?.map((entry) => (
+                                {latestDownloadableTypes ? (
+                                  allowedDownloadableTypes.map((type) => {
+                                    const formats = latestDownloadableTypes[type];
+                                    if (!formats?.length) {
+                                      return null;
+                                    }
+                                    const sectionId = `${lc}--${username}--${reponame}--${type}`;
+                                    const SectionIcon = DOWNLOAD_TYPE_ICONS[type];
+                                    return (
                                       <Accordion
                                         sx={accordionStyles}
                                         disableGutters
-                                        id={`${lc}--${username}--${reponame}--${entry.branch_or_tag_name}`}
-                                        key={entry.branch_or_tag_name}
-                                        expanded={expandedIds.has(`${lc}--${username}--${reponame}--${entry.branch_or_tag_name}`)}
-                                        onChange={(event, expanded) => handleAccordionToggle(`${lc}--${username}--${reponame}--${entry.branch_or_tag_name}`, expanded)}
+                                        id={sectionId}
+                                        key={type}
+                                        expanded={expandedIds.has(sectionId)}
+                                        onChange={(event, expanded) => handleAccordionToggle(sectionId, expanded)}
                                         slotProps={ACCORDION_SLOT_PROPS}
                                       >
                                         <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={accordionSummaryStyles}>
-                                          <Tooltip title={entry.release?.name} arrow>
-                                            <Typography><PermMediaIcon style={{ verticalAlign: 'middle'  }} /> {entry.branch_or_tag_name}</Typography>
-                                          </Tooltip>
+                                          <Typography style={{ fontWeight: 'bold' }}>
+                                            <SectionIcon style={{ verticalAlign: 'middle', marginRight: '0.5rem' }} />
+                                            {type.charAt(0).toUpperCase() + type.slice(1)} Downloads
+                                            <span style={{ fontWeight: 'normal', opacity: 0.7 }}> ({formats.length})</span>
+                                          </Typography>
                                         </AccordionSummary>
                                         <AccordionDetails>
-                                          {allowedDownloadableTypes.map((type) => {
-                                            if (!(type in entry.downloadableTypes) || !entry.downloadableTypes[type].length) {
-                                              return null;
-                                            }
-                                            return (
-                                              <div key={type} style={{ paddingLeft: '10px' }}>
-                                                <div><strong><em>{type.charAt(0).toUpperCase() + type.slice(1)}</em></strong></div>
-                                                <DownloadableFormatList formats={entry.downloadableTypes[type]} dcsURL={dcsURL} />
-                                              </div>
-                                            );
-                                          })}
+                                          <DownloadableFormatList formats={formats} dcsURL={dcsURL} />
                                         </AccordionDetails>
                                       </Accordion>
-                                    ))}
-                                  </div>
+                                    );
+                                  })
                                 ) : (
-                                  ''
+                                  <div style={{ display: 'flex', justifyContent: 'center', padding: '8px' }}>
+                                    <CircularProgress size={24} />
+                                  </div>
                                 )}
                               </AccordionDetails>
                             </Accordion>
