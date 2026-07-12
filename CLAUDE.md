@@ -23,7 +23,7 @@ There is **no test runner** configured in this repo. "Tests" here means Storyboo
 
 ## Architecture
 
-This is a **publishable React component library** (`dcs-catalog-accordion-rcl`), not an app. Vite is configured in library mode (`vite.config.js`): `src/index.js` is the entry, `react`/`react-dom` are externalized (and declared as `peerDependencies`), and output is unminified UMD + ES bundles named `dcs-map-and-accordion.{format}.js`. The npm package ships only `dist/` (`files` field). `src/main.jsx` / `src/App.jsx` exist only as a local dev harness and are **not** part of the published library.
+This is a **publishable React component library** (`dcs-catalog-accordion-rcl`), not an app. Vite is configured in library mode (`vite.config.js`): `src/index.js` is the entry, `react`/`react-dom` are externalized (and declared as `peerDependencies`), and output is minified UMD + ES bundles named `dcs-map-and-accordion.{format}.js`. The npm package ships only `dist/` (`files` field). `src/main.jsx` / `src/App.jsx` exist only as a local dev harness and are **not** part of the published library.
 
 **Consumption constraint (do not break):** the primary consumer is `openbiblestories.org/library`, which loads the **UMD** bundle pinned by exact version from unpkg via a plain `<script>` tag alongside React 18 UMD globals from a CDN (production builds, matching react/react-dom versions). React **must stay on 18.x** — React 19 dropped UMD builds entirely, which would break this static-page embedding. Dependencies are therefore pinned to React-18-compatible versions (MUI v9 still declares a React 18 peer).
 

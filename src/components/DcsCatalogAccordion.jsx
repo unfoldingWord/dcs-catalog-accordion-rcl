@@ -24,7 +24,6 @@ import CodeIcon from '@mui/icons-material/Code';
 import SourceIcon from '@mui/icons-material/Source';
 import PermMediaIcon from '@mui/icons-material/PermMedia';
 
-let downloads = [];
 let allowedDownloadableTypes = ['text', 'audio', 'video', 'other'];
 
 class Format {
@@ -103,7 +102,11 @@ function getFormatFromName(name) {
       else if (name.toLowerCase().indexOf('youtube.com') > -1) return 'youtube.com';
       else if (name.toLowerCase().indexOf('bloomlibrary.org') > -1) return 'bloomlibrary.org';
       else if (ext) return ext;
-      else return name.getHostName();
+      try {
+        return new URL(name).hostname;
+      } catch {
+        return name;
+      }
   }
 }
 
@@ -147,7 +150,6 @@ function addLinkToDownloadableTypes(downloadable_types, asset, entry) {
     if (f.prefix == fmt.prefix && f.version > fmt.version) return downloadable_types;
   }
   downloadable_types[type].push(fmt);
-  downloads[fmt.asset.browser_download_url] = fmt;
   return downloadable_types;
 }
 
@@ -207,7 +209,6 @@ function addAssetToDownloadableTypes(downloadable_types, asset, entry) {
       parent.chapters.sort((a, b) => {
         return a.identifier.localeCompare(b.identifier);
       });
-      downloads[chapter.asset.browser_download_url] = chapter;
     } else {
       // is a media zip
       let media_ext = audioparts[1];
@@ -228,7 +229,7 @@ function addAssetToDownloadableTypes(downloadable_types, asset, entry) {
         my_fmt.entry = entry;
         my_fmt.quality = quality;
         my_fmt.format = format;
-        my_fmt.prefx = prefix;
+        my_fmt.prefix = prefix;
         my_fmt.ext = ext;
         my_fmt.version = version;
         my_fmt.chapters = [];
@@ -236,7 +237,6 @@ function addAssetToDownloadableTypes(downloadable_types, asset, entry) {
       }
       my_fmt.name = asset.name;
       my_fmt.asset = asset;
-      downloads[my_fmt.asset.browser_download_url] = my_fmt;
     }
   } else {
     let fmt = new Format();
@@ -269,9 +269,15 @@ function addAssetToDownloadableTypes(downloadable_types, asset, entry) {
       if (f.prefix == fmt.prefix && f.ext == fmt.ext && f.format == fmt.format && f.version > fmt.version) return downloadable_types;
     }
     downloadable_types[type].push(fmt);
-    downloads[fmt.asset.browser_download_url] = fmt;
   }
   return downloadable_types;
+}
+
+const LINK_MANIFEST_SUFFIXES = ['links.json', 'link.json', 'assets.json', 'attachments.json', 'files.json'];
+
+function isLinkManifest(name) {
+  const lower = name.toLowerCase();
+  return LINK_MANIFEST_SUFFIXES.some((suffix) => lower.endsWith(suffix));
 }
 
 async function getDownloadableTypes(entries) {
@@ -279,53 +285,35 @@ async function getDownloadableTypes(entries) {
 
   if (entries.length < 1) return downloadable_types;
 
-  // const top_entry = entries[0];
-
-  // downloadable_types = addAssetToDownloadableTypes(
-  //   downloadable_types,
-  //   {
-  //     name: 'View on Door43.org',
-  //     browser_download_url: 'https://preview.door43.org/u/' + top_entry.full_name + '/' + top_entry.branch_or_tag_name,
-  //   },
-  //   top_entry
-  // );
-  // downloadable_types = addAssetToDownloadableTypes(
-  //   downloadable_types,
-  //   {
-  //     name: top_entry.name + '-' + top_entry.branch_or_tag_name + '.zip',
-  //     browser_download_url: top_entry.zipball_url,
-  //   },
-  //   top_entry
-  // );
-
-  for (let i = 0; i < entries.length; i++) {
-    let entry = entries[i];
-    for (let j = 0; j < entry.release?.assets.length || 0; j++) {
-      let asset = entry.release.assets[j];
-      if (
-        asset.name.toLowerCase().endsWith('links.json') ||
-        asset.name.toLowerCase().endsWith('link.json') ||
-        asset.name.toLowerCase().endsWith('assets.json') ||
-        asset.name.toLowerCase().endsWith('attachments.json') ||
-        asset.name.toLowerCase().endsWith('files.json')
-      ) {
-        try {
-          const response = await axios.get(asset.browser_download_url);
-          let linkAssets = response.data;
-          if (!Array.isArray(linkAssets)) {
-            linkAssets = [linkAssets];
+  // Fetch all link-manifest assets in parallel, then process every asset in the
+  // original order so version de-duplication behaves the same as a serial pass.
+  const linkAssetLists = new Map();
+  await Promise.all(
+    entries.flatMap((entry) =>
+      (entry.release?.assets || [])
+        .filter((asset) => isLinkManifest(asset.name))
+        .map(async (asset) => {
+          try {
+            const response = await axios.get(asset.browser_download_url);
+            linkAssetLists.set(asset, Array.isArray(response.data) ? response.data : [response.data]);
+          } catch (error) {
+            console.error('Failed to fetch link assets', error);
           }
-          linkAssets.forEach((linkAsset) => {
-            if (linkAsset.browser_download_url) {
-              if (!linkAsset.name) {
-                linkAsset.name = linkAsset.browser_download_url.substr(linkAsset.browser_download_url.lastIndexOf('/') + 1);
-              }
-              downloadable_types = addAssetToDownloadableTypes(downloadable_types, linkAsset, entry);
+        })
+    )
+  );
+
+  for (const entry of entries) {
+    for (const asset of entry.release?.assets || []) {
+      if (isLinkManifest(asset.name)) {
+        (linkAssetLists.get(asset) || []).forEach((linkAsset) => {
+          if (linkAsset.browser_download_url) {
+            if (!linkAsset.name) {
+              linkAsset.name = linkAsset.browser_download_url.substr(linkAsset.browser_download_url.lastIndexOf('/') + 1);
             }
-          });
-        } catch (error) {
-          console.error('Failed to fetch link assets', error);
-        }
+            downloadable_types = addAssetToDownloadableTypes(downloadable_types, linkAsset, entry);
+          }
+        });
       } else {
         downloadable_types = addAssetToDownloadableTypes(downloadable_types, asset, entry);
       }
@@ -612,15 +600,18 @@ const DcsCatalogAccordion = ({ subjects, owners, languages, stage, dcsURL = DEFA
             );
             const otherVersionsWithAssets = [];
             let extensionsToIgnore = [];
-            const entries = response.data.data || [];
-            for (let i = 0; i < entries.length; i++) {
-              if (entries[i].release?.assets?.filter(asset => !extensionsToIgnore.includes(getFileExt(asset.browser_download_url)))?.length > 0) {
-                entries[i].downloadableTypes = await getDownloadableTypes([entries[i]]);
-                otherVersionsWithAssets.push(entries[i]);
-                const myExtensionTypes = entries[i].release?.assets?.map(asset => getFileExt(asset.browser_download_url)).filter(ext => ext.trim());
+            (response.data.data || []).forEach((entry) => {
+              if (entry.release?.assets?.filter(asset => !extensionsToIgnore.includes(getFileExt(asset.browser_download_url)))?.length > 0) {
+                otherVersionsWithAssets.push(entry);
+                const myExtensionTypes = entry.release.assets.map(asset => getFileExt(asset.browser_download_url)).filter(ext => ext.trim());
                 extensionsToIgnore = [...extensionsToIgnore, ...myExtensionTypes]
               }
-            }
+            });
+            await Promise.all(
+              otherVersionsWithAssets.map(async (entry) => {
+                entry.downloadableTypes = await getDownloadableTypes([entry]);
+              })
+            );
             setAccordionMap((prevState) => ({
               ...prevState,
               [lc]: {

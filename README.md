@@ -93,7 +93,7 @@ pnpm install
 |---|---|
 | `pnpm dev` | Vite dev server at http://localhost:5173 — renders `src/App.jsx`, a demo wiring both components together against the live DCS API |
 | `pnpm lint` | ESLint (`--max-warnings 0`, so warnings fail) |
-| `pnpm build` | Build the library to `dist/` (unminified UMD + ES bundles, plus the demo HTML pages) |
+| `pnpm build` | Build the library to `dist/` (minified UMD + ES bundles, plus the demo HTML pages) |
 | `pnpm preview` | Serve the built `dist/` at http://localhost:4173 |
 | `pnpm storybook` | Storybook at http://localhost:6006 |
 | `pnpm build-storybook` | Static Storybook build to `storybook-static/` (gitignored) |
