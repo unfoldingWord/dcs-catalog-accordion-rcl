@@ -350,6 +350,19 @@ function getLatestDownloadableTypes(versionEntries) {
   return merged;
 }
 
+// Generic PDF file icon: page outline with a red PDF label. Deliberately generic —
+// Adobe's official PDF icon is trademarked and unsuitable for an MIT-licensed library.
+function PdfFileIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" style={{ width: '1.2em', height: '1.2em', marginRight: '0.5rem', verticalAlign: 'text-bottom' }}>
+      <path d="M6 1.5h9l5 5v16a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1v-20a1 1 0 0 1 1-1z" fill="#fff" stroke="#8a939e" strokeWidth="1.2" strokeLinejoin="round" />
+      <path d="M15 1.5v5h5" fill="none" stroke="#8a939e" strokeWidth="1.2" strokeLinejoin="round" />
+      <rect x="3" y="10.5" width="18" height="8.5" rx="1.5" fill="#FA0F00" />
+      <text x="12" y="17.1" textAnchor="middle" fontFamily="Arial, Helvetica, sans-serif" fontWeight="bold" fontSize="7" fill="#fff">PDF</text>
+    </svg>
+  );
+}
+
 // Repo source zips (git archive and Scripture Burrito) belong under Other Downloads
 // rather than the resource card's main links; they matter less than PDF/YouTube/preview.
 function appendSourceZipFormats(otherFormats, topEntry, dcsURL) {
@@ -1024,7 +1037,7 @@ const DcsCatalogAccordion = ({ subjects, owners, languages, stage, dcsURL = DEFA
                                       target="_blank"
                                       rel="noreferrer noopener"
                                     >
-                                    <PictureAsPdfIcon style={{ marginRight: '0.5rem', fontSize: '1.2em', verticalAlign: 'text-bottom', color: '#FA0F00' }} />
+                                    <PdfFileIcon />
                                       {topEntryPDF.name} (Latest PDF)
                                     </a>
                                   </li>
