@@ -46,7 +46,7 @@ Load React 18 UMD builds (production, **matching versions**) before the library 
 </script>
 ```
 
-Pin the library to an exact version and bump the pin when a new version is released. See [index-build.html](index-build.html) (a full working example, shipped as `dist/index.html`) and [index-obs.html](index-obs.html) (the openbiblestories.org page).
+Pin the library to an exact version and bump the pin when a new version is released. See [index-build.html](index-build.html) for a full working example (shipped as `dist/index.html`).
 
 > **Note:** React must stay on 18.x for this embedding style — React 19 no longer ships UMD builds.
 

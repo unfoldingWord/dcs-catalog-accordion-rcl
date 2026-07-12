@@ -52,7 +52,7 @@ An interactive SVG world map. Continent styling and region mapping come from `sr
 
 ## Build/deploy notes
 
-- `vite-plugin-static-copy` copies `index-build.html` → `dist/index.html` and `index-obs.html` → `dist/obs.html` at build time, so the published `dist/` ships standalone demo pages alongside the library bundles. Both pages must load pinned, matching **production** React 18 UMDs — unpinned `unpkg.com/react/umd/...` URLs now resolve to React 19 and 404.
+- `vite-plugin-static-copy` copies `index-build.html` → `dist/index.html` at build time, so the published `dist/` ships a standalone demo page alongside the library bundles. The page must load pinned, matching **production** React 18 UMDs — unpinned `unpkg.com/react/umd/...` URLs now resolve to React 19 and 404.
 - **npm publishing is automated:** create a GitHub release tagged `vX.Y.Z` (matching package.json's version) and `.github/workflows/npm-publish.yml` builds and publishes with the org's `NPM_TOKEN` secret; it skips if the version is already on the registry. After publishing, the exact-version unpkg pin on consuming pages (openbiblestories.org/library) must be bumped by hand.
 - Deployed via Netlify (`netlify.toml`): `pnpm build`, publish `dist`.
 - `storybook-static/` is build output — gitignored and ESLint-ignored; never commit it.

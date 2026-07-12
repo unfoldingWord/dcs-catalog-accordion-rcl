@@ -11,11 +11,6 @@ export default defineConfig({
           src: './index-build.html',
           dest: '',
           rename: 'index.html'
-        },
-        {
-          src: './index-obs.html',
-          dest: '',
-          rename: 'obs.html'
         }
       ]
     })
