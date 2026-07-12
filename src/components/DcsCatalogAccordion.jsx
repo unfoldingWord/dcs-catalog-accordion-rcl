@@ -491,6 +491,65 @@ function getSize(file_size) {
   return 'UNKNOWN';
 }
 
+// Renders one downloadable-type list (text/audio/video/other) with the per-chapter
+// expander; shared by the version cards and the resource card's latest audio/video.
+function DownloadableFormatList({ formats, dcsURL }) {
+  return (
+    <ul style={{ listStyle: 'none', margin: '4px 0', padding: '0 0 0 10px', lineHeight: 1.9 }}>
+      {formats.map((format) => (
+        <li key={format.asset?.browser_download_url || format.name}>
+          <a
+            href={format.asset.browser_download_url}
+            style={{ textDecoration: 'none' }}
+            target="_blank"
+            rel="noreferrer noopener"
+          >{getDescription(format, dcsURL)}</a>
+          {format.chapters?.length > 0 ? (
+            <Tooltip title="Download individual chapters" arrow>
+              <button
+                onClick={(e) => {
+                  e.preventDefault();
+                  const ulElement = e.target.nextElementSibling;
+                  if (ulElement) {
+                    ulElement.style.display = ulElement.style.display === 'none' ? 'block' : 'none';
+                    e.target.textContent = ulElement.style.display === 'none' ? 'Show chapters' : 'Hide chapters';
+                  }
+                }}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: '#1976d2',
+                  cursor: 'pointer',
+                  fontSize: '0.85em',
+                  marginLeft: '0.5rem',
+                  padding: 0,
+                }}
+              >Show chapters</button>
+            </Tooltip>) : null}
+          {format.chapters?.length > 0 ? (<ul style={{ display: 'none', listStyle: 'none', padding: '0 0 0 20px' }}>
+            {format.chapters.map((chapter) => (
+            <li key={chapter.asset?.browser_download_url || chapter.name}>
+              <a
+              href={chapter.asset.browser_download_url}
+              style={{ textDecoration: 'none' }}
+              target="_blank"
+              rel="noreferrer noopener">
+              {chapter.name.toLowerCase().endsWith('.mp4') ? <VideoFileIcon style={{ marginRight: '0.5rem', fontSize: '1em' }} /> : <AudioFileIcon style={{ marginRight: '0.5rem', fontSize: '1em' }} />}
+              {chapter.name}
+              </a>
+            </li>))}
+          </ul>) : ''}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+DownloadableFormatList.propTypes = {
+  formats: PropTypes.array.isRequired,
+  dcsURL: PropTypes.string,
+};
+
 const DEFAULT_DCS_URL = 'https://git.door43.org';
 const API_PATH = 'api/v1';
 const DEFAULT_STAGE = 'prod';
@@ -771,7 +830,21 @@ const DcsCatalogAccordion = ({ subjects, owners, languages, stage, dcsURL = DEFA
     finish(); // version accordion is expanded via expandedIds, or absent from the data
   }, [accordionIdToShow, accordionMap, topCatalogEntriesData]);
 
+  const accordionStyles = {
+    border: '1px solid #d8dee4',
+    borderRadius: '8px',
+    marginBottom: '8px',
+    boxShadow: 'none',
+    overflow: 'hidden',
+    '&:before': {
+      display: 'none',
+    },
+  };
+
   const accordionSummaryStyles = {
+    '&:hover:not(.Mui-expanded)': {
+      backgroundColor: '#f0f4f8',
+    },
     '&.Mui-expanded': {
       backgroundColor: '#416a8b',
       color: 'white',
@@ -785,11 +858,12 @@ const DcsCatalogAccordion = ({ subjects, owners, languages, stage, dcsURL = DEFA
   };
 
   return (
-    <div>
+    <div style={{ fontFamily: 'Roboto, Helvetica, Arial, sans-serif', color: '#1f2328' }}>
       {Object.keys(accordionMap || {}).length ? (
         Object.keys(accordionMap)?.map((lc) => (
           <Accordion
-            style={{ borderStyle: 'ridge' }}
+            sx={accordionStyles}
+            disableGutters
             id={lc}
             key={lc}
             expanded={expandedIds.has(lc)}
@@ -812,7 +886,8 @@ const DcsCatalogAccordion = ({ subjects, owners, languages, stage, dcsURL = DEFA
               {Object.keys(accordionMap[lc] || {}).length ? (
                 Object.keys(accordionMap[lc] || {})?.map((username) => (
                   <Accordion
-                    style={{ borderStyle: 'ridge' }}
+                    sx={accordionStyles}
+                    disableGutters
                     id={`${lc}--${username}`}
                     key={username}
                     expanded={expandedIds.has(`${lc}--${username}`)}
@@ -844,9 +919,22 @@ const DcsCatalogAccordion = ({ subjects, owners, languages, stage, dcsURL = DEFA
                           if (topEntryPDFs?.length == 1) {
                             topEntryPDF = topEntryPDFs[0];
                           }
+                          // Surface the newest version's PDF/audio/video on the resource card so
+                          // users don't have to dig through version accordions to find them.
+                          const versionEntries = accordionMap[lc][username][reponame];
+                          if (!topEntryPDF && Array.isArray(versionEntries)) {
+                            const entryWithPDF = versionEntries.find((e) => e.downloadableTypes?.text?.some((f) => f.format === 'application/pdf'));
+                            const pdfFormats = entryWithPDF?.downloadableTypes?.text?.filter((f) => f.format === 'application/pdf');
+                            if (pdfFormats?.length === 1) {
+                              topEntryPDF = pdfFormats[0].asset;
+                            }
+                          }
+                          const latestAudioEntry = Array.isArray(versionEntries) ? versionEntries.find((e) => e.downloadableTypes?.audio?.length) : null;
+                          const latestVideoEntry = Array.isArray(versionEntries) ? versionEntries.find((e) => e.downloadableTypes?.video?.length) : null;
                           return (
                             <Accordion
-                              style={{ borderStyle: 'ridge' }}
+                              sx={accordionStyles}
+                              disableGutters
                               id={`${lc}--${username}--${reponame}`}
                               key={id}
                               expanded={expandedIds.has(`${lc}--${username}--${reponame}`)}
@@ -861,18 +949,7 @@ const DcsCatalogAccordion = ({ subjects, owners, languages, stage, dcsURL = DEFA
                                 </Tooltip>
                               </AccordionSummary>
                               <AccordionDetails>
-                                <ul id="downloadable-links" key="links" style={{ listStyle: "none" }}>
-                                  <li key="preview">
-                                    <a
-                                      href={`https://preview.door43.org/u/${topCatalogEntriesData[id].full_name}/${topCatalogEntriesData[id].branch_or_tag_name}`}
-                                      style={{ textDecoration: 'none' }}
-                                      target="_blank"
-                                      rel="noreferrer noopener"
-                                    >
-                                    <PictureAsPdfIcon style={{ marginRight: '0.5rem', fontSize: '1em',  }} />
-                                    Preview / PDF (Website)
-                                    </a>
-                                  </li>
+                                <ul id="downloadable-links" key="links" style={{ listStyle: "none", margin: '4px 0', padding: '0 0 0 10px', lineHeight: 1.9 }}>
                                   {topEntryPDF ?
                                   <li key="pdf">
                                     <a
@@ -886,6 +963,17 @@ const DcsCatalogAccordion = ({ subjects, owners, languages, stage, dcsURL = DEFA
                                     </a>
                                   </li>
                                   : null}
+                                  <li key="preview">
+                                    <a
+                                      href={`https://preview.door43.org/u/${topCatalogEntriesData[id].full_name}/${topCatalogEntriesData[id].branch_or_tag_name}`}
+                                      style={{ textDecoration: 'none' }}
+                                      target="_blank"
+                                      rel="noreferrer noopener"
+                                    >
+                                    <PictureAsPdfIcon style={{ marginRight: '0.5rem', fontSize: '1em',  }} />
+                                    Preview / PDF (Website)
+                                    </a>
+                                  </li>
                                   <li key="dcs">
                                     <a
                                       href={`${dcsURL}/${topCatalogEntriesData[id].full_name}/src/${topCatalogEntriesData[id].ref_type}/${topCatalogEntriesData[id].branch_or_tag_name}`}
@@ -922,12 +1010,29 @@ const DcsCatalogAccordion = ({ subjects, owners, languages, stage, dcsURL = DEFA
                                   </li>
                                   )}
                                 </ul>
+                                {latestAudioEntry ? (
+                                  <div style={{ paddingLeft: '10px' }} key="latest-audio">
+                                    <h4 style={{ margin: '10px 0 0' }}>
+                                      Audio <span style={{ fontWeight: 'normal', color: '#656d76' }}>({latestAudioEntry.branch_or_tag_name})</span>
+                                    </h4>
+                                    <DownloadableFormatList formats={latestAudioEntry.downloadableTypes.audio} dcsURL={dcsURL} />
+                                  </div>
+                                ) : null}
+                                {latestVideoEntry ? (
+                                  <div style={{ paddingLeft: '10px' }} key="latest-video">
+                                    <h4 style={{ margin: '10px 0 0' }}>
+                                      Video <span style={{ fontWeight: 'normal', color: '#656d76' }}>({latestVideoEntry.branch_or_tag_name})</span>
+                                    </h4>
+                                    <DownloadableFormatList formats={latestVideoEntry.downloadableTypes.video} dcsURL={dcsURL} />
+                                  </div>
+                                ) : null}
                                 {accordionMap[lc][username][reponame]?.length ? (
                                   <div style={{ paddingLeft: '10px' }} key="downloadables">
-                                    <h4>PDF / Video / Audio Downloadables:</h4>
+                                    <h4 style={{ margin: '10px 0 4px' }}>All Versions:</h4>
                                     {accordionMap[lc][username][reponame]?.map((entry) => (
                                       <Accordion
-                                        style={{ borderStyle: 'ridge' }}
+                                        sx={accordionStyles}
+                                        disableGutters
                                         id={`${lc}--${username}--${reponame}--${entry.branch_or_tag_name}`}
                                         key={entry.branch_or_tag_name}
                                         expanded={expandedIds.has(`${lc}--${username}--${reponame}--${entry.branch_or_tag_name}`)}
@@ -947,55 +1052,7 @@ const DcsCatalogAccordion = ({ subjects, owners, languages, stage, dcsURL = DEFA
                                             return (
                                               <div key={type} style={{ paddingLeft: '10px' }}>
                                                 <div><strong><em>{type.charAt(0).toUpperCase() + type.slice(1)}</em></strong></div>
-                                                <ul style={{ listStyle: "none" }}>
-                                                  {entry.downloadableTypes[type].map((format) => {
-                                                    const description = getDescription(format, dcsURL);
-                                                    return (
-                                                      <li key={format.asset?.browser_download_url || format.name}>
-                                                      <a
-                                                        href={format.asset.browser_download_url}
-                                                        style={{ textDecoration: 'none' }}
-                                                        target="_blank"
-                                                        rel="noreferrer noopener"
-                                                      >{description}</a>
-                                                      {format.chapters?.length > 0 ? (
-                                                        <Tooltip title="Expand to download individual chapters" arrow>
-                                                          <button
-                                                            onClick={(e) => {
-                                                            e.preventDefault();
-                                                            const ulElement = e.target.nextElementSibling;
-                                                            if (ulElement) {
-                                                              ulElement.style.display = ulElement.style.display === 'none' ? 'block' : 'none';
-                                                                e.target.textContent = ulElement.style.display === 'none' ? '+' : '—';
-                                                            }
-                                                            }}
-                                                            style={{
-                                                              background: 'none',
-                                                              border: 'none',
-                                                              color: 'inherit',
-                                                              cursor: 'pointer',
-                                                              fontSize: '1em',
-                                                              marginLeft: '0.5rem'
-                                                            }}
-                                                          >+</button>
-                                                        </Tooltip>) : null}
-                                                      {format.chapters?.length > 0 ? (<ul style={{display: "none", listStyle: "none" }}>
-                                                        {format.chapters.map((chapter) => (
-                                                        <li key={chapter.asset?.browser_download_url || chapter.name}>
-                                                          <a
-                                                          href={chapter.asset.browser_download_url}
-                                                          style={{ textDecoration: 'none' }}
-                                                          target="_blank"
-                                                          rel="noreferrer noopener">
-                                                          {chapter.name.toLowerCase().endsWith('.mp4') ? <VideoFileIcon style={{ marginRight: '0.5rem', fontSize: '1em' }} /> : <AudioFileIcon style={{ marginRight: '0.5rem', fontSize: '1em' }} />}
-                                                          {chapter.name}
-                                                          </a>
-                                                        </li>))}
-                                                      </ul>) : ''}
-                                                      </li>
-                                                    );
-                                                  })}
-                                                </ul>
+                                                <DownloadableFormatList formats={entry.downloadableTypes[type]} dcsURL={dcsURL} />
                                               </div>
                                             );
                                           })}
