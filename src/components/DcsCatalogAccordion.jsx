@@ -1038,7 +1038,7 @@ const DcsCatalogAccordion = ({ subjects, owners, languages, stage, dcsURL = DEFA
                                       rel="noreferrer noopener"
                                     >
                                     <PdfFileIcon />
-                                      {topEntryPDF.name} (Latest PDF)
+                                      {topEntryPDF.name} (PDF)
                                     </a>
                                   </li>
                                   : null}
