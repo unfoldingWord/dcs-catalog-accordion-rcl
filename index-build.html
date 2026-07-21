@@ -12,57 +12,51 @@
     document.addEventListener('DOMContentLoaded', function () {
       const urlParams = new URLSearchParams(window.location.search);
       const subjects = urlParams.getAll('subject');
-      let languages = urlParams.getAll('language');
-      let owners = urlParams.getAll('owner');
-      let stage = urlParams.get('stage') || 'prod';
+      const languages = urlParams.getAll('language');
+      const owners = urlParams.getAll('owner');
+      const stage = urlParams.get('stage') || 'prod';
+      // The map and filter render by default; disable either with ?map=0 / ?filter=0.
+      const showMap = urlParams.get('map') !== '0';
+      const showFilter = urlParams.get('filter') !== '0';
 
-      // Use the subjectValues array as needed
+      let dcsURL = 'https://git.door43.org';
+      if (urlParams.get('server')) {
+        switch (urlParams.get('server').toUpperCase()) {
+          case 'QA':
+            dcsURL = 'https://qa.door43.org';
+            break;
+          case 'PROD':
+            dcsURL = 'https://git.door43.org';
+            break;
+          default:
+            if (urlParams.get('server').startsWith('http')) {
+              dcsURL = urlParams.get('server');
+            }
+        }
+      }
+      console.log("USING THIS DCS SERVER: " + dcsURL);
+
       // Ensure React and ReactDOM are available
       if (React && ReactDOM && DcsMapAndAccordion) {
         const { createElement } = React;
         const { createRoot } = ReactDOM;
-        const { DcsCatalogAccordion, WorldLanguageMap } = DcsMapAndAccordion;
+        const { DcsCatalogBrowser } = DcsMapAndAccordion;
 
-        // Create a root and render the DcsCatalogAccordion component with the specified props
-        const map = createRoot(document.getElementById('world-map-div'));
-        const accordion = createRoot(document.getElementById('dcs-catalog-accordion-div'));
-        map.render(
-          createElement(WorldLanguageMap, { onContinentClick: function (langs) {
-            langs = langs ?? languages;
-            accordion.render(
-              createElement(DcsCatalogAccordion, { subjects, languages: langs })
-            );
-          }})
-        );
-        let dcsURL = 'https://git.door43.org';
-        if (urlParams.get('server')) {
-          switch (urlParams.get('server').toUpperCase()) {
-            case 'QA':
-              dcsURL = 'https://qa.door43.org';
-              break;
-            case 'PROD':
-              dcsURL = 'https://git.door43.org';
-              break;
-            default:
-              if (urlParams.get('server').startsWith('http')) {
-                dcsURL = urlParams.get('server');
-              }
-          }
-        }
-        console.log("USING THIS DCS SERVER: "+dcsURL)
-        accordion.render(
-          createElement(DcsCatalogAccordion, { subjects, languages: [], dcsURL })
+        // One root and one component: DcsCatalogBrowser wires the world map, the
+        // stats filter and the catalog accordion together (map clicks select the
+        // region's languages in the filter, the filter drives the accordion).
+        createRoot(document.getElementById('dcs-catalog-browser-div')).render(
+          createElement(DcsCatalogBrowser, { subjects, languages, owners, stage, dcsURL, showMap, showFilter })
         );
       } else {
-        console.error('React, ReactDOM, or DcsCatalogAccordion is not available.');
+        console.error('React, ReactDOM, or DcsMapAndAccordion is not available.');
       }
     });
   </script>
 </head>
 
 <body>
-  <div id="world-map-div" style="width: 1024px"></div>
-  <div id="dcs-catalog-accordion-div" style="width: 1024px"></div>
+  <div id="dcs-catalog-browser-div" style="width: 1024px">Loading...</div>
 </body>
 
 </html>

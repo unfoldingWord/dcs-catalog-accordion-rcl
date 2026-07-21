@@ -24,6 +24,19 @@ import CodeIcon from '@mui/icons-material/Code';
 import SourceIcon from '@mui/icons-material/Source';
 import PermMediaIcon from '@mui/icons-material/PermMedia';
 
+import { API_PATH, DEFAULT_DCS_URL, DEFAULT_STAGE, buildQueryString, mediaTypeParams } from '../lib/dcsApi';
+
+// Media filters must search release history like stats-ext does — a repo's PDF or
+// video often hangs off an older release than its top catalog entry, and the has*
+// params match nothing without includeHistory in that case.
+function mediaFilterParams(mediaTypes, includeHistory) {
+  const params = mediaTypeParams(mediaTypes);
+  if (Object.keys(params).length && includeHistory !== false) {
+    params.includeHistory = 'true';
+  }
+  return params;
+}
+
 let allowedDownloadableTypes = ['text', 'audio', 'video', 'other'];
 
 class Format {
@@ -109,26 +122,6 @@ function getFormatFromName(name) {
       }
   }
 }
-
-const buildQueryString = (keyedArrays) => {
-  if (!keyedArrays) {
-    return '';
-  }
-  const parts = [];
-  Object.keys(keyedArrays).forEach((key) => {
-    const values = keyedArrays[key];
-    if (values) {
-      if (Array.isArray(values)) {
-        if (values.length) {
-          parts.push(`${encodeURIComponent(key)}=${encodeURIComponent(values.join(','))}`);
-        }
-      } else {
-        parts.push(`${encodeURIComponent(key)}=${encodeURIComponent(values)}`);
-      }
-    }
-  });
-  return parts.join('&');
-};
 
 function addLinkToDownloadableTypes(downloadable_types, asset, entry) {
   if (!asset || !asset.browser_download_url || !asset.name) return downloadable_types;
@@ -363,6 +356,21 @@ function PdfFileIcon() {
   );
 }
 
+// Picks the PDF to surface on the resource card's main links: a single PDF is
+// unambiguous; among several, only the canonical <repo>_<tag>.pdf (e.g.
+// en_obs-sn_v5.pdf) is surfaced — combined/companion PDFs (en_obs-sn-sq_v5-v3.pdf)
+// stay in the Text Downloads section.
+function pickSurfacePDF(pdfAssets, entry) {
+  if (!pdfAssets?.length) {
+    return null;
+  }
+  if (pdfAssets.length === 1) {
+    return pdfAssets[0];
+  }
+  const canonicalName = `${entry.name}_${entry.branch_or_tag_name}.pdf`.toLowerCase();
+  return pdfAssets.find((asset) => asset.name.toLowerCase() === canonicalName) || null;
+}
+
 // Repo source zips (git archive and Scripture Burrito) belong under Other Downloads
 // rather than the resource card's main links; they matter less than PDF/YouTube/preview.
 function appendSourceZipFormats(otherFormats, topEntry, dcsURL) {
@@ -381,7 +389,7 @@ function appendSourceZipFormats(otherFormats, topEntry, dcsURL) {
     });
   };
   pushZip(`${topEntry.name}-${branch}.zip`, `${dcsURL}/${topEntry.full_name}/archive/${branch}.zip`);
-  if (topEntry.metadata_type === 'rc') {
+  if (topEntry.metadata_type !== 'sb') {
     pushZip(`${topEntry.name}-${branch}-scripture-burrito.zip`, `${dcsURL}/${topEntry.full_name}/sb/${branch}.zip`);
   }
 }
@@ -614,10 +622,6 @@ DownloadableFormatList.propTypes = {
   dcsURL: PropTypes.string,
 };
 
-const DEFAULT_DCS_URL = 'https://git.door43.org';
-const API_PATH = 'api/v1';
-const DEFAULT_STAGE = 'prod';
-
 // Unmount collapsed accordion details so ~200 collapsed languages don't keep their
 // subtrees (and loading spinners) mounted in the DOM.
 const ACCORDION_SLOT_PROPS = { transition: { unmountOnExit: true } };
@@ -629,7 +633,7 @@ const DOWNLOAD_TYPE_ICONS = {
   other: PermMediaIcon,
 };
 
-const DcsCatalogAccordion = ({ subjects, owners, languages, stage, dcsURL = DEFAULT_DCS_URL }) => {
+const DcsCatalogAccordion = ({ subjects, owners, languages, mediaTypes, includeHistory = true, stage, dcsURL = DEFAULT_DCS_URL }) => {
   const [languagesData, setLanguagesData] = useState({});
   const [ownersData, setOwnersData] = useState({});
   const [topCatalogEntriesData, setTopCatalogEntriesData] = useState({});
@@ -678,7 +682,7 @@ const DcsCatalogAccordion = ({ subjects, owners, languages, stage, dcsURL = DEFA
     const fetchOwners = async (lc) => {
       try {
         const response = await axios.get(
-          `${dcsURL}/${API_PATH}/catalog/list/owners?${buildQueryString({ subject: subjects, lang: [lc.toLowerCase()], owner: owners, stage: [stage || DEFAULT_STAGE] })}`
+          `${dcsURL}/${API_PATH}/catalog/list/owners?${buildQueryString({ subject: subjects, lang: [lc.toLowerCase()], owner: owners, stage: [stage || DEFAULT_STAGE], ...mediaFilterParams(mediaTypes, includeHistory) })}`
         );
         const newOwnersData = {};
         const accordionMapOwnerMap = {};
@@ -701,10 +705,28 @@ const DcsCatalogAccordion = ({ subjects, owners, languages, stage, dcsURL = DEFA
 
     const fetchTopCatalogEntries = async (lc, username) => {
       try {
-        const response = await axios.get(`${dcsURL}/${API_PATH}/catalog/search?${buildQueryString({ subject: subjects, lang: [lc.toLowerCase()], owner: [username], stage: stage, sort: "title", order: "asc" })}`);
+        const mediaParams = mediaFilterParams(mediaTypes, includeHistory);
+        // With media filters the search must include history (see mediaFilterParams),
+        // which returns one row per matching release; keep only the newest row per
+        // repo so each repo still gets a single card.
+        const searchesHistory = 'includeHistory' in mediaParams;
+        const query = searchesHistory
+          ? buildQueryString({ subject: subjects, lang: [lc.toLowerCase()], owner: [username], stage: stage, sort: 'released', order: 'desc', ...mediaParams })
+          : buildQueryString({ subject: subjects, lang: [lc.toLowerCase()], owner: [username], stage: stage, sort: 'title', order: 'asc', ...mediaParams });
+        const response = await axios.get(`${dcsURL}/${API_PATH}/catalog/search?${query}`);
+        let entries = response.data.data || [];
+        if (searchesHistory) {
+          const newestByRepo = new Map();
+          entries.forEach((entry) => {
+            if (!newestByRepo.has(entry.full_name)) {
+              newestByRepo.set(entry.full_name, entry);
+            }
+          });
+          entries = [...newestByRepo.values()].sort((a, b) => (a.title || '').localeCompare(b.title || ''));
+        }
         const accordionMapOwnerTopCatalogEntriesMap = {};
         const newTopCatalogEntriesMap = {};
-        (response.data.data || []).forEach((info) => {
+        entries.forEach((info) => {
           newTopCatalogEntriesMap[info.full_name] = info;
           accordionMapOwnerTopCatalogEntriesMap[info.name] = null;
         });
@@ -774,16 +796,19 @@ const DcsCatalogAccordion = ({ subjects, owners, languages, stage, dcsURL = DEFA
         }
       }
     });
-  }, [expandedIds, accordionMap, topCatalogEntriesData, dcsURL, subjects, owners, stage]);
+  }, [expandedIds, accordionMap, topCatalogEntriesData, dcsURL, subjects, owners, stage, mediaTypes, includeHistory]);
 
   useEffect(() => {
     const fetchLanguages = async () => {
       try {
-        const response = await axios.get(`${dcsURL}/${API_PATH}/catalog/list/languages?${buildQueryString({ owner: owners, subject: subjects, stage: [stage || DEFAULT_STAGE] })}`);
+        const response = await axios.get(`${dcsURL}/${API_PATH}/catalog/list/languages?${buildQueryString({ owner: owners, subject: subjects, stage: [stage || DEFAULT_STAGE], ...mediaFilterParams(mediaTypes, includeHistory) })}`);
         const langData = {};
         const accMap = {};
+        // Case-insensitive membership test: callers (e.g. DcsCatalogFilter, stats-ext
+        // results) may supply codes in a different casing than the canonical lc.
+        const languagesLower = (languages || []).map((lang) => lang.toLowerCase());
         (response.data.data || []).forEach((info) => {
-          if (!languages?.length || languages?.includes(info.lc)) {
+          if (!languagesLower.length || languagesLower.includes(info.lc.toLowerCase())) {
             langData[info.lc] = info;
             accMap[info.lc] = null;
           }
@@ -798,7 +823,7 @@ const DcsCatalogAccordion = ({ subjects, owners, languages, stage, dcsURL = DEFA
 
     setExpandedIds(new Set());
     fetchLanguages();
-  }, [dcsURL, languages, subjects, owners, stage]);
+  }, [dcsURL, languages, subjects, owners, stage, mediaTypes, includeHistory]);
 
   useEffect(() => {
     const handleHashChange = () => {
@@ -985,19 +1010,16 @@ const DcsCatalogAccordion = ({ subjects, owners, languages, stage, dcsURL = DEFA
                         Object.keys(accordionMap[lc][username] || {})?.map((reponame) => {
                           const id = `${username}/${reponame}`;
                           const topEntry = topCatalogEntriesData[id];
-                          const topEntryPDFs = topEntry?.release?.assets?.filter(asset => asset.name.endsWith(".pdf"));
-                          let topEntryPDF = null;
-                          if (topEntryPDFs?.length == 1) {
-                            topEntryPDF = topEntryPDFs[0];
-                          }
+                          const topEntryPDFs = topEntry?.release?.assets?.filter(asset => asset.name.toLowerCase().endsWith(".pdf"));
+                          let topEntryPDF = topEntry ? pickSurfacePDF(topEntryPDFs, topEntry) : null;
                           // Surface the newest version's PDF/audio/video on the resource card so
                           // users don't have to dig through version accordions to find them.
                           const versionEntries = accordionMap[lc][username][reponame];
                           if (!topEntryPDF && Array.isArray(versionEntries)) {
                             const entryWithPDF = versionEntries.find((e) => e.downloadableTypes?.text?.some((f) => f.format === 'application/pdf'));
                             const pdfFormats = entryWithPDF?.downloadableTypes?.text?.filter((f) => f.format === 'application/pdf');
-                            if (pdfFormats?.length === 1) {
-                              topEntryPDF = pdfFormats[0].asset;
+                            if (pdfFormats?.length) {
+                              topEntryPDF = pickSurfacePDF(pdfFormats.map((format) => format.asset), entryWithPDF);
                             }
                           }
                           const latestDownloadableTypes = getLatestDownloadableTypes(versionEntries);
@@ -1147,6 +1169,8 @@ DcsCatalogAccordion.propTypes = {
   languages: PropTypes.array,
   owners: PropTypes.array,
   subjects: PropTypes.array,
+  mediaTypes: PropTypes.array,
+  includeHistory: PropTypes.bool,
   stage: PropTypes.string,
   dcsURL: PropTypes.string,
 };
