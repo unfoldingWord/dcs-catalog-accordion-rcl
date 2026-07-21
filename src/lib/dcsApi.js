@@ -8,7 +8,7 @@ export const DEFAULT_STAGE = 'prod';
 // stats-ext response field holding its count. The has* params are honored by
 // catalog/stats-ext, catalog/search and the catalog/list/* endpoints alike.
 export const MEDIA_TYPE_OPTIONS = [
-  { value: 'pdf', label: 'PDF', param: 'hasPDF', statKey: 'has_pdf' },
+  { value: 'pdf', label: 'PDF', param: 'hasPdf', statKey: 'has_pdf' },
   { value: 'audio', label: 'Audio', param: 'hasAudio', statKey: 'has_audio' },
   { value: 'video', label: 'Video', param: 'hasVideo', statKey: 'has_video' },
   { value: 'stream', label: 'Stream/Embed', param: 'hasStream', statKey: 'has_stream' },
