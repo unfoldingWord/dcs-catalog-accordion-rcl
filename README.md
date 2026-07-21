@@ -71,7 +71,7 @@ Load React 18 UMD builds (production, **matching versions**) before the library 
 <div id="library-div" style="max-width: 960px; text-align: left;">Loading...</div>
 <script src="https://unpkg.com/react@18.3.1/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js"></script>
-<script src="https://unpkg.com/dcs-catalog-accordion-rcl@0.2.0/dist/dcs-map-and-accordion.umd.js"></script>
+<script src="https://unpkg.com/dcs-catalog-accordion-rcl@0.2.1/dist/dcs-map-and-accordion.umd.js"></script>
 <script>
   function renderLibrary() {
     const { DcsCatalogBrowser } = DcsMapAndAccordion;
