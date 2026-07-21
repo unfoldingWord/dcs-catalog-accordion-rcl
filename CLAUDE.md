@@ -7,7 +7,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 Package manager is **pnpm** (a `pnpm-workspace.yaml` exists, but this is a single-package repo).
 
 - `pnpm dev` — start the Vite dev server (renders `src/App.jsx`, a demo with a mode switcher covering every component combination; supports `?subject=&language=&owner=&stage=&server=&demo=` URL params, defaulting to the **QA server** — use `?server=PROD` for git.door43.org).
-- `pnpm build` — build the distributable library to `dist/` (UMD + ES). Also runs the Netlify build.
+- `pnpm build` — build the distributable library to `dist/` (UMD + ES).
+- `pnpm build:demo` — build the dev sandbox as a standalone site to `dist-demo/` (`vite.demo.config.js`); requires `pnpm build` first (it copies the UMD bundle in). This is what Netlify serves.
 - `pnpm lint` — ESLint over `js,jsx`; configured with `--max-warnings 0`, so any warning fails.
 - `pnpm preview` — serve the production build.
 - `pnpm storybook` — run Storybook on port 6006.
@@ -68,5 +69,5 @@ An interactive SVG world map. Continent styling and region mapping come from `sr
 
 - `vite-plugin-static-copy` copies `index-build.html` → `dist/index.html` at build time, so the published `dist/` ships a standalone demo page alongside the library bundles. It renders a single `DcsCatalogBrowser` (URL params: `subject`/`language`/`owner`/`stage`/`server`, plus `map=0` / `filter=0` to disable pieces). The page must load pinned, matching **production** React 18 UMDs — unpinned `unpkg.com/react/umd/...` URLs now resolve to React 19 and 404.
 - **npm publishing is automated:** create a GitHub release tagged `vX.Y.Z` (matching package.json's version) and `.github/workflows/npm-publish.yml` builds and publishes with the org's `NPM_TOKEN` secret; it skips if the version is already on the registry. After publishing, the exact-version unpkg pin on consuming pages (openbiblestories.org/library) must be bumped by hand.
-- Deployed via Netlify (`netlify.toml`): `pnpm build`, publish `dist`.
+- Deployed via Netlify (`netlify.toml`): `pnpm build && pnpm build:demo`, publish `dist-demo` — the dev sandbox (demo-mode switcher) at `/`, and the UMD static-embed page at `/embed.html` (index-build.html + the just-built bundle, copied in by `vite.demo.config.js`). The sandbox shows the embed-page link only in production builds (`import.meta.env.PROD`).
 - `storybook-static/` is build output — gitignored and ESLint-ignored; never commit it.

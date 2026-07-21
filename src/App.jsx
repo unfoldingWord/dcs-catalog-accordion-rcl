@@ -9,11 +9,37 @@ import './App.css';
 // mirror the static-page contract: ?subject=&language=&owner=&stage=&server=&demo=.
 
 const DEFAULT_SUBJECTS = [
-  'Open Bible Stories',
-  'TSV OBS Translation Notes',
-  'TSV OBS Translation Questions',
-  'TSV OBS Study Notes',
-  'TSV OBS Study Questions',
+    "Aligned Bible",
+    "Aramaic Grammar",
+    "Bible",
+    "Greek Grammar",
+    "Greek Lexicon",
+    "Greek New Testament",
+    "Hebrew Grammar",
+    "Hebrew Lexicon",
+    "Hebrew Old Testament",
+    "Juxtalinear",
+    "OBS Study Notes",
+    "OBS Study Questions",
+    "OBS Translation Notes",
+    "OBS Translation Questions",
+    "Open Bible Stories",
+    "Study Notes",
+    "Training Library",
+    "Translation Academy",
+    "Translation Notes",
+    "Translation Questions",
+    "Translation Words",
+    "TSV OBS Study Notes",
+    "TSV OBS Study Questions",
+    "TSV OBS Translation Notes",
+    "TSV OBS Translation Questions",
+    "TSV OBS Translation Words Links",
+    "TSV Study Notes",
+    "TSV Study Questions",
+    "TSV Translation Notes",
+    "TSV Translation Questions",
+    "TSV Translation Words Links", 
 ];
 
 const DEMOS = {
@@ -75,6 +101,12 @@ function App() {
             {label}
           </button>
         ))}
+        {/* Only exists in the built demo site (Netlify), where build:demo copies it in */}
+        {import.meta.env.PROD && (
+          <a href="./embed.html" style={{ alignSelf: 'center', marginLeft: 'auto', color: '#416a8b' }}>
+            Static UMD embed page →
+          </a>
+        )}
       </div>
 
       {demo === 'map-filter-accordion' && <DcsCatalogBrowser {...catalogProps} onStatsChange={setLastStats} />}

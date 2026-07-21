@@ -11,6 +11,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "build:demo": "vite build --config vite.demo.config.js",
     "lint": "eslint . --ext js,jsx --report-unused-disable-directives --max-warnings 0",
     "preview": "vite preview",
     "storybook": "storybook dev -p 6006",

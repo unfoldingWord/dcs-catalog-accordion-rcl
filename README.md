@@ -160,6 +160,7 @@ pnpm install
 | `pnpm dev` | Vite dev server at http://localhost:5173 — the demo sandbox (`src/App.jsx`, see below) |
 | `pnpm lint` | ESLint (`--max-warnings 0`, so warnings fail) |
 | `pnpm build` | Build the library to `dist/` (minified UMD + ES bundles, plus the demo HTML pages) |
+| `pnpm build:demo` | Build the demo sandbox site to `dist-demo/` (what Netlify serves; run `pnpm build` first — it copies the UMD bundle) |
 | `pnpm preview` | Serve the built `dist/` at http://localhost:4173 |
 | `pnpm storybook` | Storybook at http://localhost:6006 |
 | `pnpm build-storybook` | Static Storybook build to `storybook-static/` (gitignored) |
@@ -168,8 +169,8 @@ pnpm install
 
 Three ways to see everything working against the live DCS API:
 
-- **Dev sandbox** (`pnpm dev`, renders `src/App.jsx`): buttons switch between every combination — Map + Filter + Accordion, Filter + Accordion, Map + Accordion, Accordion only, and Filter only (which prints each `onFilterChange` payload; an expandable panel shows the latest `onStatsChange` stats). It honors `?subject=&language=&owner=&stage=&server=&demo=` URL params and defaults to the **QA server** (qa.door43.org) — use `?server=PROD` for git.door43.org, or pass any `https://…` DCS URL.
-- **Built demo page** (`pnpm build && pnpm preview`, serves `dist/index.html` from [index-build.html](index-build.html)): the production-style embed — one `DcsCatalogBrowser` rendered from UMD script tags exactly like a static site would. Supports the same `subject`/`language`/`owner`/`stage`/`server` params plus `?map=0` / `?filter=0` to drop pieces.
+- **Dev sandbox** (`pnpm dev`, renders `src/App.jsx`): buttons switch between every combination — Map + Filter + Accordion, Filter + Accordion, Map + Accordion, Accordion only, and Filter only (which prints each `onFilterChange` payload; an expandable panel shows the latest `onStatsChange` stats). It honors `?subject=&language=&owner=&stage=&server=&demo=` URL params and defaults to the **QA server** (qa.door43.org) — use `?server=PROD` for git.door43.org, or pass any `https://…` DCS URL. The same page is deployed by Netlify at **https://dcs-catalog-accordion.netlify.app/** (`pnpm build:demo` builds it to `dist-demo/`).
+- **Built demo page** (`pnpm build && pnpm preview`, serves `dist/index.html` from [index-build.html](index-build.html)): the production-style embed — one `DcsCatalogBrowser` rendered from UMD script tags exactly like a static site would. Supports the same `subject`/`language`/`owner`/`stage`/`server` params plus `?map=0` / `?filter=0` to drop pieces. On the Netlify site it lives at [/embed.html](https://dcs-catalog-accordion.netlify.app/embed.html), using the UMD bundle built from the same commit.
 - **Storybook** (`pnpm storybook`): per-component stories with live controls (see below).
 
 ### Storybook
