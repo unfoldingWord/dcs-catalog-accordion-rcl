@@ -65,21 +65,29 @@ function Library() {
 
 ### On a static page (UMD script tags)
 
-Load React 18 UMD builds (production, **matching versions**) before the library bundle, then render with `ReactDOM.createRoot`:
+Load React 18 UMD builds (production, **matching versions**) before the library bundle, then render with `ReactDOM.createRoot`. Note the target div comes **before** the render script (scripts run as the page parses, so rendering into a div that appears later in the document finds nothing and throws) — the ready-state guard is extra insurance for CMS blocks like Squarespace:
 
 ```html
+<div id="library-div" style="max-width: 960px; text-align: left;">Loading...</div>
 <script src="https://unpkg.com/react@18.3.1/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/dcs-catalog-accordion-rcl@0.2.0/dist/dcs-map-and-accordion.umd.js"></script>
 <script>
-  const { DcsCatalogBrowser } = DcsMapAndAccordion;
-  ReactDOM.createRoot(document.getElementById('library-div')).render(
-    React.createElement(DcsCatalogBrowser, {
-      subjects: ['Open Bible Stories', 'OBS Translation Notes', 'OBS Translation Questions', 'OBS Study Notes', 'OBS Study Questions'],
-      showMap: true,    // set false for filter + accordion only
-      showFilter: true, // set false for map + accordion only
-    })
-  );
+  function renderLibrary() {
+    const { DcsCatalogBrowser } = DcsMapAndAccordion;
+    ReactDOM.createRoot(document.getElementById('library-div')).render(
+      React.createElement(DcsCatalogBrowser, {
+        subjects: ['Open Bible Stories', 'OBS Translation Notes', 'OBS Translation Questions', 'OBS Study Notes', 'OBS Study Questions'],
+        showMap: true,    // set false for filter + accordion only
+        showFilter: true, // set false for map + accordion only
+      })
+    );
+  }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', renderLibrary);
+  } else {
+    renderLibrary();
+  }
 </script>
 ```
 
