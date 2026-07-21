@@ -34,7 +34,7 @@ import { DcsCatalogBrowser } from 'dcs-catalog-accordion-rcl';
 
 // Map + filter + accordion, wired together:
 <DcsCatalogBrowser
-  subjects={['Open Bible Stories', 'TSV OBS Translation Notes']}
+  subjects={['Open Bible Stories', 'OBS Translation Notes', 'OBS Translation Questions', 'OBS Study Notes', 'OBS Study Questions']}
   languages={[]}
   owners={[]}
   stage="prod"
@@ -75,7 +75,7 @@ Load React 18 UMD builds (production, **matching versions**) before the library 
   const { DcsCatalogBrowser } = DcsMapAndAccordion;
   ReactDOM.createRoot(document.getElementById('library-div')).render(
     React.createElement(DcsCatalogBrowser, {
-      subjects: ['Open Bible Stories'],
+      subjects: ['Open Bible Stories', 'OBS Translation Notes', 'OBS Translation Questions', 'OBS Study Notes', 'OBS Study Questions'],
       showMap: true,    // set false for filter + accordion only
       showFilter: true, // set false for map + accordion only
     })
