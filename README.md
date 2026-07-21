@@ -71,7 +71,7 @@ Load React 18 UMD builds (production, **matching versions**) before the library 
 <div id="library-div" style="max-width: 960px; text-align: left;">Loading...</div>
 <script src="https://unpkg.com/react@18.3.1/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js"></script>
-<script src="https://unpkg.com/dcs-catalog-accordion-rcl@0.2.1/dist/dcs-map-and-accordion.umd.js"></script>
+<script src="https://unpkg.com/dcs-catalog-accordion-rcl@0.3.0/dist/dcs-map-and-accordion.umd.js"></script>
 <script>
   function renderLibrary() {
     const { DcsCatalogBrowser } = DcsMapAndAccordion;
@@ -116,7 +116,6 @@ Expanding accordions by hand writes the same hash back to the URL, so any state 
 |---|---|---|
 | `subjects` / `languages` / `owners` | `[]` (everything) | The catalog universe being browsed; passed to the filter as its defaults and to the accordion |
 | `stage` | `"prod"` | Catalog stage: `"prod"` (releases), `"latest"` (default branch + releases), or `"other"` |
-| `includeHistory` | `true` | Whether stats and media filters look at all release versions, not just each repo's latest |
 | `dcsURL` | `https://git.door43.org` | Base URL of the DCS server (`/api/v1` is appended internally) |
 | `showMap` | `true` | Render the world map above the filter/accordion |
 | `showFilter` | `true` | Render the stats filter bar above the accordion |
@@ -129,7 +128,6 @@ Expanding accordions by hand writes the same hash back to the URL, so any state 
 |---|---|---|
 | `subjects` / `languages` / `owners` | `[]` (everything) | Default filter values and the universe the dropdown options come from (via `catalog/stats-ext`) |
 | `stage` | `"prod"` | Catalog stage |
-| `includeHistory` | `true` | Passed to `stats-ext`/list endpoints: count media in all release versions |
 | `dcsURL` | `https://git.door43.org` | Base URL of the DCS server |
 | `selectedLanguages` | — | Externally pushed language selection (e.g. a map region's codes); unknown codes are dropped, an empty array clears the selection |
 | `onFilterChange` | — | `(filter) => void` with `{ subjects, languages, owners, stage, mediaTypes, isFiltered }` — each list falls back to the given defaults when nothing is selected, ready to spread onto `DcsCatalogAccordion` |
@@ -143,7 +141,6 @@ Expanding accordions by hand writes the same hash back to the URL, so any state 
 | `owners` | all owners | Array of DCS owner/organization names to filter by |
 | `subjects` | all subjects | Array of resource subjects to filter by (e.g. `['Open Bible Stories']`) |
 | `mediaTypes` | `[]` | Only show resources having these media, any of `'pdf'`, `'audio'`, `'video'`, `'stream'`, `'other'` (the filter's Media selection) |
-| `includeHistory` | `true` | With `mediaTypes`, whether media may come from any release version (matches how `DcsCatalogFilter` counts) |
 | `stage` | `"prod"` | Catalog stage: `"prod"` (releases), `"latest"` (default branch + releases), or `"other"` |
 | `dcsURL` | `https://git.door43.org` | Base URL of the DCS server (`/api/v1` is appended internally) |
 

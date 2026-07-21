@@ -26,17 +26,6 @@ import PermMediaIcon from '@mui/icons-material/PermMedia';
 
 import { API_PATH, DEFAULT_DCS_URL, DEFAULT_STAGE, buildQueryString, mediaTypeParams } from '../lib/dcsApi';
 
-// Media filters must search release history like stats-ext does — a repo's PDF or
-// video often hangs off an older release than its top catalog entry, and the has*
-// params match nothing without includeHistory in that case.
-function mediaFilterParams(mediaTypes, includeHistory) {
-  const params = mediaTypeParams(mediaTypes);
-  if (Object.keys(params).length && includeHistory !== false) {
-    params.includeHistory = 'true';
-  }
-  return params;
-}
-
 let allowedDownloadableTypes = ['text', 'audio', 'video', 'other'];
 
 class Format {
@@ -633,7 +622,7 @@ const DOWNLOAD_TYPE_ICONS = {
   other: PermMediaIcon,
 };
 
-const DcsCatalogAccordion = ({ subjects, owners, languages, mediaTypes, includeHistory = true, stage, dcsURL = DEFAULT_DCS_URL }) => {
+const DcsCatalogAccordion = ({ subjects, owners, languages, mediaTypes, stage, dcsURL = DEFAULT_DCS_URL }) => {
   const [languagesData, setLanguagesData] = useState({});
   const [ownersData, setOwnersData] = useState({});
   const [topCatalogEntriesData, setTopCatalogEntriesData] = useState({});
@@ -682,7 +671,7 @@ const DcsCatalogAccordion = ({ subjects, owners, languages, mediaTypes, includeH
     const fetchOwners = async (lc) => {
       try {
         const response = await axios.get(
-          `${dcsURL}/${API_PATH}/catalog/list/owners?${buildQueryString({ subject: subjects, lang: [lc.toLowerCase()], owner: owners, stage: [stage || DEFAULT_STAGE], ...mediaFilterParams(mediaTypes, includeHistory) })}`
+          `${dcsURL}/${API_PATH}/catalog/list/owners?${buildQueryString({ subject: subjects, lang: [lc.toLowerCase()], owner: owners, stage: [stage || DEFAULT_STAGE], ...mediaTypeParams(mediaTypes) })}`
         );
         const newOwnersData = {};
         const accordionMapOwnerMap = {};
@@ -705,28 +694,11 @@ const DcsCatalogAccordion = ({ subjects, owners, languages, mediaTypes, includeH
 
     const fetchTopCatalogEntries = async (lc, username) => {
       try {
-        const mediaParams = mediaFilterParams(mediaTypes, includeHistory);
-        // With media filters the search must include history (see mediaFilterParams),
-        // which returns one row per matching release; keep only the newest row per
-        // repo so each repo still gets a single card.
-        const searchesHistory = 'includeHistory' in mediaParams;
-        const query = searchesHistory
-          ? buildQueryString({ subject: subjects, lang: [lc.toLowerCase()], owner: [username], stage: stage, sort: 'released', order: 'desc', ...mediaParams })
-          : buildQueryString({ subject: subjects, lang: [lc.toLowerCase()], owner: [username], stage: stage, sort: 'title', order: 'asc', ...mediaParams });
+        const query = buildQueryString({ subject: subjects, lang: [lc.toLowerCase()], owner: [username], stage: stage, sort: 'title', order: 'asc', ...mediaTypeParams(mediaTypes) });
         const response = await axios.get(`${dcsURL}/${API_PATH}/catalog/search?${query}`);
-        let entries = response.data.data || [];
-        if (searchesHistory) {
-          const newestByRepo = new Map();
-          entries.forEach((entry) => {
-            if (!newestByRepo.has(entry.full_name)) {
-              newestByRepo.set(entry.full_name, entry);
-            }
-          });
-          entries = [...newestByRepo.values()].sort((a, b) => (a.title || '').localeCompare(b.title || ''));
-        }
         const accordionMapOwnerTopCatalogEntriesMap = {};
         const newTopCatalogEntriesMap = {};
-        entries.forEach((info) => {
+        (response.data.data || []).forEach((info) => {
           newTopCatalogEntriesMap[info.full_name] = info;
           accordionMapOwnerTopCatalogEntriesMap[info.name] = null;
         });
@@ -748,6 +720,10 @@ const DcsCatalogAccordion = ({ subjects, owners, languages, mediaTypes, includeH
 
     const fetchCatalogEntriesWithDownloadables = async (lc, username, reponame, topCatalogEntry) => {
       try {
+        // The one intentional includeHistory use in this library: this per-repo query
+        // gathers every release so the download sections can offer each release's
+        // PDFs/audio/video/stream/other assets. Never send includeHistory to stats-ext
+        // or the list endpoints — it inflates counts with superseded releases.
         const response = await axios.get(
           `${dcsURL}/${API_PATH}/catalog/search?owner=${encodeURIComponent(topCatalogEntry.owner)}&repo=${encodeURIComponent(
             topCatalogEntry.name
@@ -796,12 +772,12 @@ const DcsCatalogAccordion = ({ subjects, owners, languages, mediaTypes, includeH
         }
       }
     });
-  }, [expandedIds, accordionMap, topCatalogEntriesData, dcsURL, subjects, owners, stage, mediaTypes, includeHistory]);
+  }, [expandedIds, accordionMap, topCatalogEntriesData, dcsURL, subjects, owners, stage, mediaTypes]);
 
   useEffect(() => {
     const fetchLanguages = async () => {
       try {
-        const response = await axios.get(`${dcsURL}/${API_PATH}/catalog/list/languages?${buildQueryString({ owner: owners, subject: subjects, stage: [stage || DEFAULT_STAGE], ...mediaFilterParams(mediaTypes, includeHistory) })}`);
+        const response = await axios.get(`${dcsURL}/${API_PATH}/catalog/list/languages?${buildQueryString({ owner: owners, subject: subjects, stage: [stage || DEFAULT_STAGE], ...mediaTypeParams(mediaTypes) })}`);
         const langData = {};
         const accMap = {};
         // Case-insensitive membership test: callers (e.g. DcsCatalogFilter, stats-ext
@@ -823,7 +799,7 @@ const DcsCatalogAccordion = ({ subjects, owners, languages, mediaTypes, includeH
 
     setExpandedIds(new Set());
     fetchLanguages();
-  }, [dcsURL, languages, subjects, owners, stage, mediaTypes, includeHistory]);
+  }, [dcsURL, languages, subjects, owners, stage, mediaTypes]);
 
   useEffect(() => {
     const handleHashChange = () => {
@@ -1170,7 +1146,6 @@ DcsCatalogAccordion.propTypes = {
   owners: PropTypes.array,
   subjects: PropTypes.array,
   mediaTypes: PropTypes.array,
-  includeHistory: PropTypes.bool,
   stage: PropTypes.string,
   dcsURL: PropTypes.string,
 };

@@ -65,7 +65,6 @@ const DcsCatalogFilter = ({
   languages = EMPTY_ARRAY,
   owners = EMPTY_ARRAY,
   stage = DEFAULT_STAGE,
-  includeHistory = true,
   dcsURL = DEFAULT_DCS_URL,
   selectedLanguages = null,
   onFilterChange,
@@ -95,7 +94,7 @@ const DcsCatalogFilter = ({
   // be value signatures (plain strings) instead of array identities, which consumers —
   // especially static pages — recreate on every render.
   const propsRef = useRef({});
-  propsRef.current = { subjects, languages, owners, stage, includeHistory, dcsURL };
+  propsRef.current = { subjects, languages, owners, stage, dcsURL };
   const selectionsRef = useRef({});
   selectionsRef.current = { selSubjects, selLangs, selOwners, selMedia };
   const onFilterChangeRef = useRef();
@@ -103,7 +102,7 @@ const DcsCatalogFilter = ({
   const onStatsChangeRef = useRef();
   onStatsChangeRef.current = onStatsChange;
 
-  const propsSig = JSON.stringify([subjects, languages, owners, stage, includeHistory, dcsURL]);
+  const propsSig = JSON.stringify([subjects, languages, owners, stage, dcsURL]);
   const selectionsSig = JSON.stringify([selSubjects, selLangs, selOwners, selMedia]);
 
   // A different universe (new props) invalidates any current selections.
@@ -122,13 +121,12 @@ const DcsCatalogFilter = ({
   // Owner and language details are only needed once per universe: both lists cover
   // everything the narrower stats-ext queries can ever return.
   useEffect(() => {
-    const { subjects, languages, owners, stage, includeHistory, dcsURL } = propsRef.current;
+    const { subjects, languages, owners, stage, dcsURL } = propsRef.current;
     const query = buildQueryString({
       subject: subjects,
       lang: languages.map((lc) => lc.toLowerCase()),
       owner: owners,
       stage: stage || DEFAULT_STAGE,
-      includeHistory: includeHistory ? 'true' : null,
     });
     let cancelled = false;
     (async () => {
@@ -164,7 +162,7 @@ const DcsCatalogFilter = ({
   // selection swapped back to its default so its options stay selectable. Identical
   // queries are deduped, so with nothing selected this is a single request.
   useEffect(() => {
-    const { subjects, languages, owners, stage, includeHistory, dcsURL } = propsRef.current;
+    const { subjects, languages, owners, stage, dcsURL } = propsRef.current;
     const { selSubjects, selLangs, selOwners, selMedia } = selectionsRef.current;
     const lower = (values) => values.map((value) => value.toLowerCase());
     const mainParams = {
@@ -172,7 +170,6 @@ const DcsCatalogFilter = ({
       lang: lower(selLangs.length ? selLangs : languages),
       owner: selOwners.length ? selOwners : owners,
       stage: stage || DEFAULT_STAGE,
-      includeHistory: includeHistory ? 'true' : null,
       ...mediaTypeParams(selMedia),
     };
     const requests = new Map();
@@ -496,7 +493,6 @@ DcsCatalogFilter.propTypes = {
   languages: PropTypes.array,
   owners: PropTypes.array,
   stage: PropTypes.string,
-  includeHistory: PropTypes.bool,
   dcsURL: PropTypes.string,
   selectedLanguages: PropTypes.array,
   onFilterChange: PropTypes.func,

@@ -21,7 +21,6 @@ const DcsCatalogBrowser = ({
   languages = EMPTY_ARRAY,
   owners = EMPTY_ARRAY,
   stage = DEFAULT_STAGE,
-  includeHistory = true,
   dcsURL = DEFAULT_DCS_URL,
   showMap = true,
   showFilter = true,
@@ -55,15 +54,14 @@ const DcsCatalogBrowser = ({
         owners: filter.owners,
         stage: filter.stage,
         mediaTypes: filter.mediaTypes,
-        includeHistory,
         dcsURL,
       };
     }
     // Without the filter, map clicks drive the accordion directly (the map's
     // "Show All" sends an empty list, which falls back to the given languages).
     const effectiveLanguages = !showFilter && mapLanguages?.length ? mapLanguages : languages;
-    return { subjects, languages: effectiveLanguages, owners, stage, mediaTypes: EMPTY_ARRAY, includeHistory, dcsURL };
-  }, [showFilter, filter, mapLanguages, subjects, languages, owners, stage, includeHistory, dcsURL]);
+    return { subjects, languages: effectiveLanguages, owners, stage, mediaTypes: EMPTY_ARRAY, dcsURL };
+  }, [showFilter, filter, mapLanguages, subjects, languages, owners, stage, dcsURL]);
 
   return (
     <div>
@@ -74,7 +72,6 @@ const DcsCatalogBrowser = ({
           languages={languages}
           owners={owners}
           stage={stage}
-          includeHistory={includeHistory}
           dcsURL={dcsURL}
           selectedLanguages={showMap ? mapLanguages : undefined}
           onFilterChange={handleFilterChange}
@@ -91,7 +88,6 @@ DcsCatalogBrowser.propTypes = {
   languages: PropTypes.array,
   owners: PropTypes.array,
   stage: PropTypes.string,
-  includeHistory: PropTypes.bool,
   dcsURL: PropTypes.string,
   showMap: PropTypes.bool,
   showFilter: PropTypes.bool,
