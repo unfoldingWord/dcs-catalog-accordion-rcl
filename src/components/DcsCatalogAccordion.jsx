@@ -28,6 +28,24 @@ import { API_PATH, DEFAULT_DCS_URL, DEFAULT_STAGE, buildQueryString, mediaTypePa
 
 let allowedDownloadableTypes = ['text', 'audio', 'video', 'other'];
 
+// Media extensions recognized as audio/video. These tables drive the download-section
+// typing, the chapter grouping, zip content detection, description labels and icons —
+// add new media formats here, not in the switch statements below.
+const AUDIO_EXTENSIONS = ['mp3', 'm4a', 'aac', 'ogg', 'oga', 'opus', 'flac', 'wav', 'wma'];
+const VIDEO_EXTENSIONS = ['mp4', 'm4v', '3gp', '3gpp', 'webm', 'mkv', 'mov', 'avi', 'wmv'];
+const MEDIA_EXTENSIONS = [...AUDIO_EXTENSIONS, ...VIDEO_EXTENSIONS];
+
+function mediaMimeFromExt(ext) {
+  const normalized = ext === '3gpp' ? '3gp' : ext;
+  if (AUDIO_EXTENSIONS.includes(ext)) return `audio/${normalized}`;
+  if (VIDEO_EXTENSIONS.includes(ext)) return `video/${normalized}`;
+  return '';
+}
+
+function isVideoFileName(name) {
+  return VIDEO_EXTENSIONS.includes(getFileExt((name || '').toLowerCase()));
+}
+
 class Format {
   entry = {};
   name = '';
@@ -58,18 +76,16 @@ function getFileExt(name) {
 function getFormatFromName(name) {
   if (!name) return '';
   var ext = getFileExt(name.toLowerCase());
-  var zip_type_regex = /_(mp3|3gp|mp4)_/gi;
+  var zip_type_regex = new RegExp(`_(${MEDIA_EXTENSIONS.join('|')})_`, 'i');
+  const mediaMime = mediaMimeFromExt(ext);
+  if (mediaMime) {
+    return mediaMime;
+  }
   switch (ext) {
-    case '3gp':
-      return 'video/3gp';
     case 'html':
       return 'text/html';
     case 'md':
       return 'text/markdown';
-    case 'mp3':
-      return 'audio/mp3';
-    case 'mp4':
-      return 'video/mp4';
     case 'pdf':
       return 'application/pdf';
     case 'txt':
@@ -88,13 +104,9 @@ function getFormatFromName(name) {
       {
         let match = zip_type_regex.exec(name.toLowerCase());
         if (match) {
-          switch (match[1].toLowerCase()) {
-            case '3gp':
-              return 'application/zip; content=video/3gp';
-            case 'mp4':
-              return 'application/zip; content=video/mp4';
-            case 'mp3':
-              return 'application/zip; content=audio/mp3';
+          const zippedMime = mediaMimeFromExt(match[1].toLowerCase());
+          if (zippedMime) {
+            return `application/zip; content=${zippedMime}`;
           }
         }
       }
@@ -137,7 +149,7 @@ function addLinkToDownloadableTypes(downloadable_types, asset, entry) {
 
 function addAssetToDownloadableTypes(downloadable_types, asset, entry) {
   const fileparts_regex = /^([^_]+)_([^_]+)_v([\d.-]+)_*(.*)\.([^._]+)$/;
-  const audioparts_regex = /^(\d+|mp\d|3gpp)_([^_]+)$/;
+  const audioparts_regex = new RegExp(`^(\\d+|${MEDIA_EXTENSIONS.join('|')})_([^_]+)$`);
   let fileparts = fileparts_regex.exec(asset.name.toLowerCase());
   if (!fileparts) {
     return addLinkToDownloadableTypes(downloadable_types, asset, entry);
@@ -148,9 +160,9 @@ function addAssetToDownloadableTypes(downloadable_types, asset, entry) {
   let ext = fileparts[5];
   let format = getFormatFromName(asset.name);
   const audioparts = audioparts_regex.exec(info);
-  if (audioparts && (ext == 'zip' || ext == 'mp3' || ext == 'mp4')) {
+  if (audioparts && (ext == 'zip' || MEDIA_EXTENSIONS.includes(ext))) {
     let quality = audioparts[2];
-    if (ext == 'mp3' || ext == 'mp4') {
+    if (MEDIA_EXTENSIONS.includes(ext)) {
       let parent_zip_name = prefix + '_v' + version + '_' + ext + '_' + quality + '.zip';
       let chapterNum = audioparts[1];
       let parent = null;
@@ -164,8 +176,7 @@ function addAssetToDownloadableTypes(downloadable_types, asset, entry) {
       chapter.quality = quality;
       chapter.format = format;
       chapter.asset = asset;
-      let type = 'audio';
-      if (ext == 'mp4') type = 'video';
+      let type = VIDEO_EXTENSIONS.includes(ext) ? 'video' : 'audio';
       for (let k = 0; k < downloadable_types[type].length; k++) {
         let media = downloadable_types[type][k];
         if (media.prefix == prefix && media.quality == quality && media.version > version) return downloadable_types;
@@ -195,10 +206,7 @@ function addAssetToDownloadableTypes(downloadable_types, asset, entry) {
       // is a media zip
       let media_ext = audioparts[1];
       let my_fmt;
-      let type = 'audio';
-      if (media_ext == 'mp4' || media_ext == '3gpp') {
-        type = 'video';
-      }
+      let type = VIDEO_EXTENSIONS.includes(media_ext) ? 'video' : 'audio';
       for (let k = 0; k < downloadable_types[type].length; k++) {
         let media = downloadable_types[type][k];
         if (media.prefix == prefix && media.format == format && media.quality == quality && media.version > version) return downloadable_types;
@@ -414,7 +422,11 @@ function getDescription(fmt, dcsURL = DEFAULT_DCS_URL) {
   let mime_parts = mime.split('/');
   let show_size = true;
   let is_source_regex = new RegExp(`${dcsURL}/[^/]+/[^/]+/archive/`, 'gi');
-  switch (mime_parts[mime_parts.length - 1]) {
+  const media_ext = mime_parts[mime_parts.length - 1];
+  if (AUDIO_EXTENSIONS.includes(media_ext) || VIDEO_EXTENSIONS.includes(media_ext)) {
+    fmt_description = media_ext.toUpperCase();
+    IconComponentClass = AUDIO_EXTENSIONS.includes(media_ext) ? AudioFileIcon : VideoFileIcon;
+  } else switch (mime_parts[mime_parts.length - 1]) {
     case 'pdf':
       fmt_description = 'PDF';
       IconComponentClass = PictureAsPdfIcon;
@@ -465,19 +477,6 @@ function getDescription(fmt, dcsURL = DEFAULT_DCS_URL) {
     case 'usfm':
       fmt_description = 'USFM';
       IconComponentClass = SourceIcon;
-      break;
-    case 'mp3':
-      fmt_description = 'MP3';
-      IconComponentClass = AudioFileIcon;
-      break;
-    case 'mp4':
-      fmt_description = 'MP4';
-      IconComponentClass = VideoFileIcon;
-      break;
-    case '3gp':
-    case '3gpp':
-      fmt_description = '3GP';
-      IconComponentClass = VideoFileIcon;
       break;
     case 'zip':
       {
@@ -559,12 +558,24 @@ function DownloadableFormatList({ formats, dcsURL }) {
     <ul style={{ listStyle: 'none', margin: '4px 0', padding: '0 0 0 10px', lineHeight: 1.9 }}>
       {formats.map((format) => (
         <li key={format.asset?.browser_download_url || format.name}>
-          <a
-            href={format.asset.browser_download_url}
-            style={{ textDecoration: 'none' }}
-            target="_blank"
-            rel="noreferrer noopener"
-          >{getDescription(format, dcsURL)}</a>
+          {format.asset ? (
+            <a
+              href={format.asset.browser_download_url}
+              style={{ textDecoration: 'none' }}
+              target="_blank"
+              rel="noreferrer noopener"
+            >{getDescription(format, dcsURL)}</a>
+          ) : (
+            // Chapter files uploaded without an accompanying zip: there is no parent
+            // download, but the chapter group still needs its header row.
+            <span>
+              {isVideoFileName(format.chapters?.[0]?.name) ? <VideoFileIcon style={{ marginRight: '8px' }} /> : <AudioFileIcon style={{ marginRight: '8px' }} />}
+              {format.name.replace(/\.zip$/i, '')}
+              <span style={{ color: '#606060', marginLeft: '10px' }}>
+                ({getFileExt(format.chapters?.[0]?.name || '').toUpperCase()}{format.quality ? `; ${format.quality}` : ''}; {(format.chapters?.length || 0).toLocaleString()} chapters)
+              </span>
+            </span>
+          )}
           {format.chapters?.length > 0 ? (
             <Tooltip title="Download individual chapters" arrow>
               <button
@@ -595,7 +606,7 @@ function DownloadableFormatList({ formats, dcsURL }) {
               style={{ textDecoration: 'none' }}
               target="_blank"
               rel="noreferrer noopener">
-              {chapter.name.toLowerCase().endsWith('.mp4') ? <VideoFileIcon style={{ marginRight: '0.5rem', fontSize: '1em' }} /> : <AudioFileIcon style={{ marginRight: '0.5rem', fontSize: '1em' }} />}
+              {isVideoFileName(chapter.name) ? <VideoFileIcon style={{ marginRight: '0.5rem', fontSize: '1em' }} /> : <AudioFileIcon style={{ marginRight: '0.5rem', fontSize: '1em' }} />}
               {chapter.name}
               </a>
             </li>))}

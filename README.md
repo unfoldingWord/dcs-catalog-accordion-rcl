@@ -5,7 +5,7 @@ A React component library for browsing the [DCS (Door43 Content Service)](https:
 Four components are exported:
 
 - **`DcsCatalogBrowser`** — the all-in-one component: composes the world map, the stats filter and the catalog accordion with shared state (map clicks select the region's languages in the filter; the filter drives the accordion). `showMap` / `showFilter` props turn the extra pieces off, so one render call covers every combination.
-- **`DcsCatalogAccordion`** — a lazily-loaded three-level nested accordion (language → owner → resource) that fetches each level from the DCS catalog API on expand; each resource card offers quick links (newest PDF, YouTube, Preview, DCS) plus collapsed Text/Audio/Video/Other download sections merged across release versions.
+- **`DcsCatalogAccordion`** — a lazily-loaded three-level nested accordion (language → owner → resource) that fetches each level from the DCS catalog API on expand; each resource card offers quick links (newest PDF, YouTube, Preview, DCS) plus collapsed Text/Audio/Video/Other download sections merged across release versions. Chapterized audio/video releases are grouped into collapsible per-quality chapter lists; common media formats are recognized (audio: mp3, m4a, aac, ogg, opus, flac, wav…; video: mp4, m4v, webm, mkv, mov, avi, 3gp…).
 - **`DcsCatalogFilter`** — a filter bar driven by the `catalog/stats-ext` endpoint: Resources (subjects) / Languages / Publishers autocompletes plus a "Media" dropdown, every dropdown option showing its live entry count (`Open Bible Stories (343)`, `PDF (66)`, …), with an entry/language stats line underneath. Reports the effective filter through `onFilterChange` so anything (typically the accordion) can consume it.
 - **`WorldLanguageMap`** — an interactive SVG world map whose `onContinentClick` callback supplies language codes, typically used to drive the filter's language selection or the accordion's `languages` prop.
 
@@ -71,7 +71,7 @@ Load React 18 UMD builds (production, **matching versions**) before the library 
 <div id="library-div" style="max-width: 960px; text-align: left;">Loading...</div>
 <script src="https://unpkg.com/react@18.3.1/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js"></script>
-<script src="https://unpkg.com/dcs-catalog-accordion-rcl@0.3.0/dist/dcs-map-and-accordion.umd.js"></script>
+<script src="https://unpkg.com/dcs-catalog-accordion-rcl@0.3.1/dist/dcs-map-and-accordion.umd.js"></script>
 <script>
   function renderLibrary() {
     const { DcsCatalogBrowser } = DcsMapAndAccordion;
