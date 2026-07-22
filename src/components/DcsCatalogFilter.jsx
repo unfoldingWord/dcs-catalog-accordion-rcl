@@ -40,6 +40,49 @@ function normalizeStatsList(listOrMap) {
   return listOrMap;
 }
 
+// DCS represents the TSV-format variant of a resource as its own subject named
+// "TSV <subject>" (e.g. "TSV OBS Translation Notes"). The dropdown hides that
+// distinction: options are merged under the TSV-stripped base name (counts summed),
+// and outgoing subject queries expand a base name back to every concrete variant
+// known to exist in the universe.
+const TSV_PREFIX = 'TSV ';
+
+const stripTsvPrefix = (subject) => (subject.startsWith(TSV_PREFIX) ? subject.slice(TSV_PREFIX.length) : subject);
+
+// Records concrete subject spellings into byBase (lowercased base name → Map of
+// lowercased spelling → spelling), the knowledge expandSubjects draws on.
+const addKnownSubjects = (byBase, values) => {
+  values.forEach((subject) => {
+    const base = stripTsvPrefix(subject).toLowerCase();
+    let forms = byBase.get(base);
+    if (!forms) {
+      forms = new Map();
+      byBase.set(base, forms);
+    }
+    if (!forms.has(subject.toLowerCase())) {
+      forms.set(subject.toLowerCase(), subject);
+    }
+  });
+};
+
+// Expands subjects to every concrete variant sharing their base name, so querying
+// "OBS Translation Notes" also queries "TSV OBS Translation Notes" when the universe
+// has it. Names with no recorded variants pass through unchanged.
+const expandSubjects = (byBase, list) => {
+  const seen = new Set();
+  const expanded = [];
+  list.forEach((subject) => {
+    const forms = byBase.get(stripTsvPrefix(subject).toLowerCase());
+    (forms?.size ? Array.from(forms.values()) : [subject]).forEach((value) => {
+      if (!seen.has(value.toLowerCase())) {
+        seen.add(value.toLowerCase());
+        expanded.push(value);
+      }
+    });
+  });
+  return expanded;
+};
+
 // MUI Autocomplete warns when a selected value is missing from the options, which can
 // happen while the facet option lists are narrowing; keep every selected value listed.
 function withSelected(options, selected) {
@@ -58,7 +101,10 @@ function withSelected(options, selected) {
 // stats summary line underneath. The subjects/languages/owners props define the
 // universe being filtered (empty means the whole catalog); every selection change
 // re-queries stats-ext so each facet's options only offer values that still match the
-// other facets. The effective filter is reported through onFilterChange so a parent
+// other facets. "TSV "-prefixed subjects are folded into their base subject
+// throughout: one merged dropdown option with a summed count, with every outgoing
+// subject list (queries and the onFilterChange payload) expanded back to the concrete
+// variants. The effective filter is reported through onFilterChange so a parent
 // can drive DcsCatalogAccordion (or anything else) with it.
 const DcsCatalogFilter = ({
   subjects = EMPTY_ARRAY,
@@ -105,6 +151,17 @@ const DcsCatalogFilter = ({
   const propsSig = JSON.stringify([subjects, languages, owners, stage, dcsURL]);
   const selectionsSig = JSON.stringify([selSubjects, selLangs, selOwners, selMedia]);
 
+  // Concrete subject spellings known to exist in the current universe — the subjects
+  // prop plus everything stats-ext has reported for it — keyed by base name. Kept in
+  // a ref (reseeded here whenever the universe changes, before any effect runs) so
+  // effects can expand subject queries without extra dependencies, and so another
+  // universe's TSV variants can never leak in.
+  const subjectVariantsRef = useRef(null);
+  if (subjectVariantsRef.current?.sig !== propsSig) {
+    subjectVariantsRef.current = { sig: propsSig, byBase: new Map() };
+    addKnownSubjects(subjectVariantsRef.current.byBase, subjects);
+  }
+
   // A different universe (new props) invalidates any current selections.
   const prevPropsSigRef = useRef(propsSig);
   useEffect(() => {
@@ -123,7 +180,7 @@ const DcsCatalogFilter = ({
   useEffect(() => {
     const { subjects, languages, owners, stage, dcsURL } = propsRef.current;
     const query = buildQueryString({
-      subject: subjects,
+      subject: expandSubjects(subjectVariantsRef.current.byBase, subjects),
       lang: languages.map((lc) => lc.toLowerCase()),
       owner: owners,
       stage: stage || DEFAULT_STAGE,
@@ -164,9 +221,10 @@ const DcsCatalogFilter = ({
   useEffect(() => {
     const { subjects, languages, owners, stage, dcsURL } = propsRef.current;
     const { selSubjects, selLangs, selOwners, selMedia } = selectionsRef.current;
+    const { byBase } = subjectVariantsRef.current;
     const lower = (values) => values.map((value) => value.toLowerCase());
     const mainParams = {
-      subject: selSubjects.length ? selSubjects : subjects,
+      subject: expandSubjects(byBase, selSubjects.length ? selSubjects : subjects),
       lang: lower(selLangs.length ? selLangs : languages),
       owner: selOwners.length ? selOwners : owners,
       stage: stage || DEFAULT_STAGE,
@@ -186,7 +244,7 @@ const DcsCatalogFilter = ({
       try {
         const [main, forSubjects, forLangs, forOwners] = await Promise.all([
           getStats(mainParams),
-          getStats({ ...mainParams, subject: subjects }),
+          getStats({ ...mainParams, subject: expandSubjects(byBase, subjects) }),
           getStats({ ...mainParams, lang: lower(languages) }),
           getStats({ ...mainParams, owner: owners }),
         ]);
@@ -194,6 +252,8 @@ const DcsCatalogFilter = ({
           return;
         }
         setStats(main);
+        // Newly learned "TSV X" subjects make later queries for "X" cover both.
+        addKnownSubjects(byBase, Object.keys(normalizeStatsList(forSubjects.subjects)));
         setFacetOptions({
           subjects: normalizeStatsList(forSubjects.subjects),
           languages: normalizeStatsList(forLangs.languages),
@@ -228,7 +288,7 @@ const DcsCatalogFilter = ({
     const { subjects, languages, owners, stage } = propsRef.current;
     const { selSubjects, selLangs, selOwners, selMedia } = selectionsRef.current;
     onFilterChangeRef.current?.({
-      subjects: selSubjects.length ? selSubjects : subjects,
+      subjects: expandSubjects(subjectVariantsRef.current.byBase, selSubjects.length ? selSubjects : subjects),
       languages: selLangs.length ? selLangs : languages,
       owners: selOwners.length ? selOwners : owners,
       stage: stage || DEFAULT_STAGE,
@@ -295,7 +355,18 @@ const DcsCatalogFilter = ({
   // ownersInfo since stats-ext reports lowercased values.
   const subjectOptions = useMemo(() => {
     const source = !isFiltered && subjects.length ? subjects : facetOptions ? Object.keys(facetOptions.subjects) : subjects;
-    return withSelected([...source].sort((a, b) => a.localeCompare(b)), selSubjects);
+    // One merged option per TSV-stripped base name ("TSV OBS Translation Notes"
+    // collapses into "OBS Translation Notes").
+    const seen = new Set();
+    const options = [];
+    source.forEach((subject) => {
+      const base = stripTsvPrefix(subject);
+      if (!seen.has(base.toLowerCase())) {
+        seen.add(base.toLowerCase());
+        options.push(base);
+      }
+    });
+    return withSelected(options.sort((a, b) => a.localeCompare(b)), selSubjects);
   }, [isFiltered, subjects, facetOptions, selSubjects]);
 
   const languageOptions = useMemo(() => {
@@ -332,7 +403,21 @@ const DcsCatalogFilter = ({
   // options come from. Language counts sum casing variants (stats-ext can report the
   // same code twice, e.g. ur-deva and ur-Deva, which the options dedupe); owners are
   // reported lowercased. Null when the server predates counts or the value is absent.
-  const subjectCount = useCallback((subject) => facetOptions?.subjects?.[subject] ?? null, [facetOptions]);
+  // A merged subject option counts every concrete variant of its base name ("OBS
+  // Translation Notes" sums "OBS Translation Notes" and "TSV OBS Translation Notes").
+  const subjectCount = useCallback(
+    (subject) => {
+      const base = stripTsvPrefix(subject).toLowerCase();
+      let total = null;
+      Object.entries(facetOptions?.subjects || {}).forEach(([value, count]) => {
+        if (stripTsvPrefix(value).toLowerCase() === base && typeof count === 'number') {
+          total = (total || 0) + count;
+        }
+      });
+      return total;
+    },
+    [facetOptions]
+  );
 
   const languageCount = useCallback(
     (lc) => {

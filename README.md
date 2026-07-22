@@ -6,7 +6,7 @@ Four components are exported:
 
 - **`DcsCatalogBrowser`** — the all-in-one component: composes the world map, the stats filter and the catalog accordion with shared state (map clicks select the region's languages in the filter; the filter drives the accordion). `showMap` / `showFilter` props turn the extra pieces off, so one render call covers every combination.
 - **`DcsCatalogAccordion`** — a lazily-loaded three-level nested accordion (language → owner → resource) that fetches each level from the DCS catalog API on expand; each resource card offers quick links (newest PDF, YouTube, Preview, DCS) plus collapsed Text/Audio/Video/Other download sections merged across release versions. Chapterized audio/video releases are grouped into collapsible per-quality chapter lists; common media formats are recognized (audio: mp3, m4a, aac, ogg, opus, flac, wav…; video: mp4, m4v, webm, mkv, mov, avi, 3gp…).
-- **`DcsCatalogFilter`** — a filter bar driven by the `catalog/stats-ext` endpoint: Resources (subjects) / Languages / Publishers autocompletes plus a "Media" dropdown, every dropdown option showing its live entry count (`Open Bible Stories (343)`, `PDF (66)`, …), with an entry/language stats line underneath. Reports the effective filter through `onFilterChange` so anything (typically the accordion) can consume it.
+- **`DcsCatalogFilter`** — a filter bar driven by the `catalog/stats-ext` endpoint: Resources (subjects) / Languages / Publishers autocompletes plus a "Media" dropdown, every dropdown option showing its live entry count (`Open Bible Stories (343)`, `PDF (66)`, …), with an entry/language stats line underneath. `TSV `-prefixed subjects (e.g. `TSV OBS Translation Notes`) are folded into their base subject: the dropdown shows one merged option with the variants' counts summed, and selecting it (or defaulting to the whole list) queries DCS with every variant — `subject=OBS Translation Notes,TSV OBS Translation Notes`. Reports the effective filter through `onFilterChange` so anything (typically the accordion) can consume it.
 - **`WorldLanguageMap`** — an interactive SVG world map whose `onContinentClick` callback supplies language codes, typically used to drive the filter's language selection or the accordion's `languages` prop.
 
 The primary consumer is [openbiblestories.org/library](https://openbiblestories.org/library), which embeds the UMD bundle on a Squarespace page via `<script>` tags.
@@ -130,7 +130,7 @@ Expanding accordions by hand writes the same hash back to the URL, so any state 
 | `stage` | `"prod"` | Catalog stage |
 | `dcsURL` | `https://git.door43.org` | Base URL of the DCS server |
 | `selectedLanguages` | — | Externally pushed language selection (e.g. a map region's codes); unknown codes are dropped, an empty array clears the selection |
-| `onFilterChange` | — | `(filter) => void` with `{ subjects, languages, owners, stage, mediaTypes, isFiltered }` — each list falls back to the given defaults when nothing is selected, ready to spread onto `DcsCatalogAccordion` |
+| `onFilterChange` | — | `(filter) => void` with `{ subjects, languages, owners, stage, mediaTypes, isFiltered }` — each list falls back to the given defaults when nothing is selected (`subjects` expanded to include known `TSV ` variants), ready to spread onto `DcsCatalogAccordion` |
 | `onStatsChange` | — | `(stats) => void`, the latest `catalog/stats-ext` response for the current selection |
 
 `DcsCatalogAccordion`:
