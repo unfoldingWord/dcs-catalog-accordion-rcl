@@ -6,7 +6,7 @@ import './App.css';
 
 // Dev sandbox demoing every supported embedding: the DcsCatalogBrowser combos a static
 // page gets from a single render call, plus the individual components. URL params
-// mirror the static-page contract: ?subject=&language=&owner=&stage=&server=&demo=.
+// mirror the static-page contract: ?subject=&language=&owner=&media=&stage=&server=&demo=.
 
 const DEFAULT_SUBJECTS = [
     "Aligned Bible",
@@ -70,6 +70,7 @@ function App() {
       subjects: urlParams.getAll('subject').length ? urlParams.getAll('subject') : DEFAULT_SUBJECTS,
       languages: urlParams.getAll('language'),
       owners: urlParams.getAll('owner'),
+      mediaTypes: urlParams.getAll('media'),
       stage: urlParams.get('stage') || 'prod',
       dcsURL: resolveDcsURL(urlParams.get('server')),
     }),

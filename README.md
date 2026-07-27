@@ -115,6 +115,7 @@ Expanding accordions by hand writes the same hash back to the URL, so any state 
 | Prop | Default | Description |
 |---|---|---|
 | `subjects` / `languages` / `owners` | `[]` (everything) | The catalog universe being browsed; passed to the filter as its defaults and to the accordion |
+| `mediaTypes` | `[]` (any) | Default media filter, any of `'pdf'`, `'audio'`, `'video'`, `'stream'`, `'other'` — applied like the other defaults until the user picks something in the filter's Media dropdown |
 | `stage` | `"prod"` | Catalog stage: `"prod"` (releases), `"latest"` (default branch + releases), or `"other"` |
 | `dcsURL` | `https://git.door43.org` | Base URL of the DCS server (`/api/v1` is appended internally) |
 | `showMap` | `true` | Render the world map above the filter/accordion |
@@ -127,6 +128,7 @@ Expanding accordions by hand writes the same hash back to the URL, so any state 
 | Prop | Default | Description |
 |---|---|---|
 | `subjects` / `languages` / `owners` | `[]` (everything) | Default filter values and the universe the dropdown options come from (via `catalog/stats-ext`) |
+| `mediaTypes` | `[]` (any) | Default Media selection, any of `'pdf'`, `'audio'`, `'video'`, `'stream'`, `'other'` — constrains every query (and the `onFilterChange` payload) while the user hasn't picked media; a user selection replaces it |
 | `stage` | `"prod"` | Catalog stage |
 | `dcsURL` | `https://git.door43.org` | Base URL of the DCS server |
 | `selectedLanguages` | — | Externally pushed language selection (e.g. a map region's codes); unknown codes are dropped, an empty array clears the selection |
@@ -174,8 +176,8 @@ pnpm install
 
 Three ways to see everything working against the live DCS API:
 
-- **Dev sandbox** (`pnpm dev`, renders `src/App.jsx`): buttons switch between every combination — Map + Filter + Accordion, Filter + Accordion, Map + Accordion, Accordion only, and Filter only (which prints each `onFilterChange` payload; an expandable panel shows the latest `onStatsChange` stats). It honors `?subject=&language=&owner=&stage=&server=&demo=` URL params and defaults to the **QA server** (qa.door43.org) — use `?server=PROD` for git.door43.org, or pass any `https://…` DCS URL. The same page is deployed by Netlify at **https://dcs-catalog-accordion.netlify.app/** (`pnpm build:demo` builds it to `dist-demo/`).
-- **Built demo page** (`pnpm build && pnpm preview`, serves `dist/index.html` from [index-build.html](index-build.html)): the production-style embed — one `DcsCatalogBrowser` rendered from UMD script tags exactly like a static site would. Supports the same `subject`/`language`/`owner`/`stage`/`server` params plus `?map=0` / `?filter=0` to drop pieces. On the Netlify site it lives at [/embed.html](https://dcs-catalog-accordion.netlify.app/embed.html), using the UMD bundle built from the same commit.
+- **Dev sandbox** (`pnpm dev`, renders `src/App.jsx`): buttons switch between every combination — Map + Filter + Accordion, Filter + Accordion, Map + Accordion, Accordion only, and Filter only (which prints each `onFilterChange` payload; an expandable panel shows the latest `onStatsChange` stats). It honors `?subject=&language=&owner=&media=&stage=&server=&demo=` URL params and defaults to the **QA server** (qa.door43.org) — use `?server=PROD` for git.door43.org, or pass any `https://…` DCS URL. The same page is deployed by Netlify at **https://dcs-catalog-accordion.netlify.app/** (`pnpm build:demo` builds it to `dist-demo/`).
+- **Built demo page** (`pnpm build && pnpm preview`, serves `dist/index.html` from [index-build.html](index-build.html)): the production-style embed — one `DcsCatalogBrowser` rendered from UMD script tags exactly like a static site would. Supports the same `subject`/`language`/`owner`/`media`/`stage`/`server` params plus `?map=0` / `?filter=0` to drop pieces. On the Netlify site it lives at [/embed.html](https://dcs-catalog-accordion.netlify.app/embed.html), using the UMD bundle built from the same commit.
 - **Storybook** (`pnpm storybook`): per-component stories with live controls (see below).
 
 ### Storybook

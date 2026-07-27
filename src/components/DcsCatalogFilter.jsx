@@ -98,8 +98,8 @@ function withSelected(options, selected) {
 
 // A filter bar over the DCS catalog driven by the catalog/stats-ext endpoint: subject,
 // language and publisher (owner) autocompletes plus a "Has Media" dropdown, with a
-// stats summary line underneath. The subjects/languages/owners props define the
-// universe being filtered (empty means the whole catalog); every selection change
+// stats summary line underneath. The subjects/languages/owners/mediaTypes props define
+// the universe being filtered (empty means the whole catalog); every selection change
 // re-queries stats-ext so each facet's options only offer values that still match the
 // other facets. "TSV "-prefixed subjects are folded into their base subject
 // throughout: one merged dropdown option with a summed count, with every outgoing
@@ -110,6 +110,7 @@ const DcsCatalogFilter = ({
   subjects = EMPTY_ARRAY,
   languages = EMPTY_ARRAY,
   owners = EMPTY_ARRAY,
+  mediaTypes = EMPTY_ARRAY,
   stage = DEFAULT_STAGE,
   dcsURL = DEFAULT_DCS_URL,
   selectedLanguages = null,
@@ -140,7 +141,7 @@ const DcsCatalogFilter = ({
   // be value signatures (plain strings) instead of array identities, which consumers —
   // especially static pages — recreate on every render.
   const propsRef = useRef({});
-  propsRef.current = { subjects, languages, owners, stage, dcsURL };
+  propsRef.current = { subjects, languages, owners, mediaTypes, stage, dcsURL };
   const selectionsRef = useRef({});
   selectionsRef.current = { selSubjects, selLangs, selOwners, selMedia };
   const onFilterChangeRef = useRef();
@@ -148,7 +149,7 @@ const DcsCatalogFilter = ({
   const onStatsChangeRef = useRef();
   onStatsChangeRef.current = onStatsChange;
 
-  const propsSig = JSON.stringify([subjects, languages, owners, stage, dcsURL]);
+  const propsSig = JSON.stringify([subjects, languages, owners, mediaTypes, stage, dcsURL]);
   const selectionsSig = JSON.stringify([selSubjects, selLangs, selOwners, selMedia]);
 
   // Concrete subject spellings known to exist in the current universe — the subjects
@@ -219,7 +220,7 @@ const DcsCatalogFilter = ({
   // selection swapped back to its default so its options stay selectable. Identical
   // queries are deduped, so with nothing selected this is a single request.
   useEffect(() => {
-    const { subjects, languages, owners, stage, dcsURL } = propsRef.current;
+    const { subjects, languages, owners, mediaTypes, stage, dcsURL } = propsRef.current;
     const { selSubjects, selLangs, selOwners, selMedia } = selectionsRef.current;
     const { byBase } = subjectVariantsRef.current;
     const lower = (values) => values.map((value) => value.toLowerCase());
@@ -228,7 +229,7 @@ const DcsCatalogFilter = ({
       lang: lower(selLangs.length ? selLangs : languages),
       owner: selOwners.length ? selOwners : owners,
       stage: stage || DEFAULT_STAGE,
-      ...mediaTypeParams(selMedia),
+      ...mediaTypeParams(selMedia.length ? selMedia : mediaTypes),
     };
     const requests = new Map();
     const getStats = (params) => {
@@ -285,14 +286,14 @@ const DcsCatalogFilter = ({
       return;
     }
     lastEmittedSigRef.current = selectionsSig;
-    const { subjects, languages, owners, stage } = propsRef.current;
+    const { subjects, languages, owners, mediaTypes, stage } = propsRef.current;
     const { selSubjects, selLangs, selOwners, selMedia } = selectionsRef.current;
     onFilterChangeRef.current?.({
       subjects: expandSubjects(subjectVariantsRef.current.byBase, selSubjects.length ? selSubjects : subjects),
       languages: selLangs.length ? selLangs : languages,
       owners: selOwners.length ? selOwners : owners,
       stage: stage || DEFAULT_STAGE,
-      mediaTypes: selMedia,
+      mediaTypes: selMedia.length ? selMedia : mediaTypes,
       isFiltered: selSubjects.length > 0 || selLangs.length > 0 || selOwners.length > 0 || selMedia.length > 0,
     });
   }, [selectionsSig]);
@@ -577,6 +578,7 @@ DcsCatalogFilter.propTypes = {
   subjects: PropTypes.array,
   languages: PropTypes.array,
   owners: PropTypes.array,
+  mediaTypes: PropTypes.array,
   stage: PropTypes.string,
   dcsURL: PropTypes.string,
   selectedLanguages: PropTypes.array,

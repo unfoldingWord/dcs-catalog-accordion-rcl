@@ -14,6 +14,8 @@
       const subjects = urlParams.getAll('subject');
       const languages = urlParams.getAll('language');
       const owners = urlParams.getAll('owner');
+      // Default media filter, e.g. ?media=pdf&media=audio ('pdf', 'audio', 'video', 'stream', 'other')
+      const mediaTypes = urlParams.getAll('media');
       const stage = urlParams.get('stage') || 'prod';
       // The map and filter render by default; disable either with ?map=0 / ?filter=0.
       const showMap = urlParams.get('map') !== '0';
@@ -46,7 +48,7 @@
         // stats filter and the catalog accordion together (map clicks select the
         // region's languages in the filter, the filter drives the accordion).
         createRoot(document.getElementById('dcs-catalog-browser-div')).render(
-          createElement(DcsCatalogBrowser, { subjects, languages, owners, stage, dcsURL, showMap, showFilter })
+          createElement(DcsCatalogBrowser, { subjects, languages, owners, mediaTypes, stage, dcsURL, showMap, showFilter })
         );
       } else {
         console.error('React, ReactDOM, or DcsMapAndAccordion is not available.');
