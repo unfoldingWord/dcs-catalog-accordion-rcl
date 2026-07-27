@@ -83,6 +83,9 @@ const expandSubjects = (byBase, list) => {
   return expanded;
 };
 
+// Order-insensitive comparison for the Media selection against its prop default.
+const sameMedia = (a, b) => JSON.stringify([...a].sort()) === JSON.stringify([...b].sort());
+
 // MUI Autocomplete warns when a selected value is missing from the options, which can
 // happen while the facet option lists are narrowing; keep every selected value listed.
 function withSelected(options, selected) {
@@ -98,10 +101,11 @@ function withSelected(options, selected) {
 
 // A filter bar over the DCS catalog driven by the catalog/stats-ext endpoint: subject,
 // language and publisher (owner) autocompletes plus a "Has Media" dropdown, with a
-// stats summary line underneath. The subjects/languages/owners/mediaTypes props define
-// the universe being filtered (empty means the whole catalog); every selection change
-// re-queries stats-ext so each facet's options only offer values that still match the
-// other facets. "TSV "-prefixed subjects are folded into their base subject
+// stats summary line underneath. The subjects/languages/owners props define the
+// universe being filtered (empty means the whole catalog); mediaTypes pre-selects the
+// Media dropdown (visible, changeable, restored by Clear Filters). Every selection
+// change re-queries stats-ext so each facet's options only offer values that still
+// match the other facets. "TSV "-prefixed subjects are folded into their base subject
 // throughout: one merged dropdown option with a summed count, with every outgoing
 // subject list (queries and the onFilterChange payload) expanded back to the concrete
 // variants. The effective filter is reported through onFilterChange so a parent
@@ -120,7 +124,10 @@ const DcsCatalogFilter = ({
   const [selSubjects, setSelSubjects] = useState([]);
   const [selLangs, setSelLangs] = useState([]);
   const [selOwners, setSelOwners] = useState([]);
-  const [selMedia, setSelMedia] = useState([]);
+  // Unlike the other facets' defaults (which constrain queries invisibly), the
+  // mediaTypes default is a visible pre-selection in the Media dropdown: the user
+  // can see it, uncheck it to widen results, and Clear Filters restores it.
+  const [selMedia, setSelMedia] = useState(mediaTypes);
   const [stats, setStats] = useState(null);
   // Per-facet {value: entryCount} maps, each from a stats-ext query that omits the
   // facet's own selection (so a selected subject doesn't shrink the subject dropdown
@@ -163,7 +170,8 @@ const DcsCatalogFilter = ({
     addKnownSubjects(subjectVariantsRef.current.byBase, subjects);
   }
 
-  // A different universe (new props) invalidates any current selections.
+  // A different universe (new props) invalidates any current selections; the Media
+  // selection returns to the new universe's default.
   const prevPropsSigRef = useRef(propsSig);
   useEffect(() => {
     if (prevPropsSigRef.current === propsSig) {
@@ -173,7 +181,7 @@ const DcsCatalogFilter = ({
     setSelSubjects([]);
     setSelLangs([]);
     setSelOwners([]);
-    setSelMedia([]);
+    setSelMedia(propsRef.current.mediaTypes);
   }, [propsSig]);
 
   // Owner and language details are only needed once per universe: both lists cover
@@ -220,7 +228,7 @@ const DcsCatalogFilter = ({
   // selection swapped back to its default so its options stay selectable. Identical
   // queries are deduped, so with nothing selected this is a single request.
   useEffect(() => {
-    const { subjects, languages, owners, mediaTypes, stage, dcsURL } = propsRef.current;
+    const { subjects, languages, owners, stage, dcsURL } = propsRef.current;
     const { selSubjects, selLangs, selOwners, selMedia } = selectionsRef.current;
     const { byBase } = subjectVariantsRef.current;
     const lower = (values) => values.map((value) => value.toLowerCase());
@@ -229,7 +237,7 @@ const DcsCatalogFilter = ({
       lang: lower(selLangs.length ? selLangs : languages),
       owner: selOwners.length ? selOwners : owners,
       stage: stage || DEFAULT_STAGE,
-      ...mediaTypeParams(selMedia.length ? selMedia : mediaTypes),
+      ...mediaTypeParams(selMedia),
     };
     const requests = new Map();
     const getStats = (params) => {
@@ -293,8 +301,10 @@ const DcsCatalogFilter = ({
       languages: selLangs.length ? selLangs : languages,
       owners: selOwners.length ? selOwners : owners,
       stage: stage || DEFAULT_STAGE,
-      mediaTypes: selMedia.length ? selMedia : mediaTypes,
-      isFiltered: selSubjects.length > 0 || selLangs.length > 0 || selOwners.length > 0 || selMedia.length > 0,
+      // The Media selection is reported as-is (it starts at the mediaTypes default,
+      // and an empty selection genuinely means "no media constraint").
+      mediaTypes: selMedia,
+      isFiltered: selSubjects.length > 0 || selLangs.length > 0 || selOwners.length > 0 || !sameMedia(selMedia, mediaTypes),
     });
   }, [selectionsSig]);
 
@@ -325,7 +335,9 @@ const DcsCatalogFilter = ({
     setPendingPush(null);
   }, [pendingPush, langsInfo]);
 
-  const isFiltered = selSubjects.length > 0 || selLangs.length > 0 || selOwners.length > 0 || selMedia.length > 0;
+  // Media counts as "filtered" only when it differs from its default, so the Clear
+  // Filters button doesn't render (uselessly) in the pristine pre-selected state.
+  const isFiltered = selSubjects.length > 0 || selLangs.length > 0 || selOwners.length > 0 || !sameMedia(selMedia, mediaTypes);
 
   const languageLabel = useCallback(
     (lc) => {
@@ -481,7 +493,7 @@ const DcsCatalogFilter = ({
     setSelSubjects([]);
     setSelLangs([]);
     setSelOwners([]);
-    setSelMedia([]);
+    setSelMedia(mediaTypes);
     setPendingPush(null);
   };
 

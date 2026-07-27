@@ -115,7 +115,7 @@ Expanding accordions by hand writes the same hash back to the URL, so any state 
 | Prop | Default | Description |
 |---|---|---|
 | `subjects` / `languages` / `owners` | `[]` (everything) | The catalog universe being browsed; passed to the filter as its defaults and to the accordion |
-| `mediaTypes` | `[]` (any) | Default media filter, any of `'pdf'`, `'audio'`, `'video'`, `'stream'`, `'other'` — applied like the other defaults until the user picks something in the filter's Media dropdown |
+| `mediaTypes` | `[]` (any) | Default media filter, any of `'pdf'`, `'audio'`, `'video'`, `'stream'`, `'other'` — pre-selected in the filter's Media dropdown (the user can change or uncheck it; Clear Filters restores it); without the filter it constrains the accordion directly |
 | `stage` | `"prod"` | Catalog stage: `"prod"` (releases), `"latest"` (default branch + releases), or `"other"` |
 | `dcsURL` | `https://git.door43.org` | Base URL of the DCS server (`/api/v1` is appended internally) |
 | `showMap` | `true` | Render the world map above the filter/accordion |
@@ -128,11 +128,11 @@ Expanding accordions by hand writes the same hash back to the URL, so any state 
 | Prop | Default | Description |
 |---|---|---|
 | `subjects` / `languages` / `owners` | `[]` (everything) | Default filter values and the universe the dropdown options come from (via `catalog/stats-ext`) |
-| `mediaTypes` | `[]` (any) | Default Media selection, any of `'pdf'`, `'audio'`, `'video'`, `'stream'`, `'other'` — constrains every query (and the `onFilterChange` payload) while the user hasn't picked media; a user selection replaces it |
+| `mediaTypes` | `[]` (any) | Initial Media selection, any of `'pdf'`, `'audio'`, `'video'`, `'stream'`, `'other'` — shown pre-selected in the Media dropdown and applied to every query; the user can change or uncheck it, and Clear Filters (or a change of the other props) restores it |
 | `stage` | `"prod"` | Catalog stage |
 | `dcsURL` | `https://git.door43.org` | Base URL of the DCS server |
 | `selectedLanguages` | — | Externally pushed language selection (e.g. a map region's codes); unknown codes are dropped, an empty array clears the selection |
-| `onFilterChange` | — | `(filter) => void` with `{ subjects, languages, owners, stage, mediaTypes, isFiltered }` — each list falls back to the given defaults when nothing is selected (`subjects` expanded to include known `TSV ` variants), ready to spread onto `DcsCatalogAccordion` |
+| `onFilterChange` | — | `(filter) => void` with `{ subjects, languages, owners, stage, mediaTypes, isFiltered }` — each list falls back to the given defaults when nothing is selected (`subjects` expanded to include known `TSV ` variants; `mediaTypes` reports the Media selection as-is, which starts at the `mediaTypes` default), ready to spread onto `DcsCatalogAccordion` |
 | `onStatsChange` | — | `(stats) => void`, the latest `catalog/stats-ext` response for the current selection |
 
 `DcsCatalogAccordion`:

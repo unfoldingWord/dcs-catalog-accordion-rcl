@@ -14,7 +14,7 @@
       const subjects = urlParams.getAll('subject');
       const languages = urlParams.getAll('language');
       const owners = urlParams.getAll('owner');
-      // Default media filter, e.g. ?media=pdf&media=audio ('pdf', 'audio', 'video', 'stream', 'other')
+      // Initial Media selection, e.g. ?media=pdf&media=audio ('pdf', 'audio', 'video', 'stream', 'other')
       const mediaTypes = urlParams.getAll('media');
       const stage = urlParams.get('stage') || 'prod';
       // The map and filter render by default; disable either with ?map=0 / ?filter=0.
